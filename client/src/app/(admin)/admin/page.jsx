@@ -19,10 +19,11 @@
 import { cookies } from "next/headers";
 import DashboardClient from "./DashboardClient";
 
-const API_BASE =
+const API_BASE = (
   process.env.API_URL ||
   process.env.NEXT_PUBLIC_API_URL ||
-  "http://localhost:5000";
+  "https://phran6properties-production.up.railway.app"
+).replace(/\/$/, "");
 
 async function fetchDashboardStats(token) {
   try {

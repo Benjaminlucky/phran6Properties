@@ -52,7 +52,7 @@ export default function AdminSidebar({ newEnquiries = 0 }) {
 
   // Fetch site name from DB so sidebar brand reflects admin settings
   useEffect(() => {
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://phran6properties-production.up.railway.app";
     fetch(`${API_URL}/settings`)
       .then((r) => r.json())
       .then((json) => {

@@ -39,17 +39,21 @@ const DEFAULTS = {
 export async function GET() {
   // Private server-side env var — never exposed to the browser.
   // Falls back to the public URL for local dev where both are identical.
-  const apiBase =
+  const apiBase = (
     process.env.API_URL ||
     process.env.NEXT_PUBLIC_API_URL ||
-    "http://localhost:5000";
+    "https://phran6properties-production.up.railway.app"
+  ).replace(/\/$/, "");
 
   let settings = {};
 
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15000);
   try {
     const res = await fetch(`${apiBase}/settings`, {
-      next: { revalidate: 30 }, // 30s server-side cache — theme changes appear within 30s
+      next: { revalidate: 30 },
       headers: { "Content-Type": "application/json" },
+      signal: controller.signal,
     });
     if (res.ok) {
       const json = await res.json();
@@ -57,6 +61,8 @@ export async function GET() {
     }
   } catch {
     // Serve defaults silently if API is unreachable
+  } finally {
+    clearTimeout(timer);
   }
 
   // Merge DB values over defaults — skip empty strings

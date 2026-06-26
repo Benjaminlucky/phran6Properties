@@ -19,10 +19,11 @@ const SITE_URL =
   process.env.SITE_URL ||
   "http://localhost:3000";
 
-const API_BASE =
+const API_BASE = (
   process.env.API_URL ||
   process.env.NEXT_PUBLIC_API_URL ||
-  "http://localhost:5000";
+  "https://phran6properties-production.up.railway.app"
+).replace(/\/$/, "");
 
 // Re-validate the sitemap every 12 hours so new listings appear quickly
 export const revalidate = 43200;
@@ -33,14 +34,17 @@ export const revalidate = 43200;
 async function fetchAllSlugs(endpoint, extraParams = "") {
   const results = [];
   let page = 1;
-  const perPage = 100; // API max
+  const perPage = 100;
 
   while (true) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15000);
     try {
       const url = `${API_BASE}${endpoint}?page=${page}&perPage=${perPage}${extraParams}`;
       const res = await fetch(url, {
         next: { revalidate: 43200 },
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
       });
 
       if (!res.ok) break;
@@ -59,11 +63,12 @@ async function fetchAllSlugs(endpoint, extraParams = "") {
         }
       }
 
-      // Stop if we got fewer records than a full page — we're done
       if (items.length < perPage) break;
       page++;
     } catch {
       break;
+    } finally {
+      clearTimeout(timer);
     }
   }
 

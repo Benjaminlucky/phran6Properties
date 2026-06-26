@@ -1,6 +1,6 @@
 // ── API Configuration ──────────────────────────────────────────
 export const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || "https://realtymartnew-production.up.railway.app";
+  process.env.NEXT_PUBLIC_API_URL || "https://phran6properties-production.up.railway.app";
 export const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 export const REVALIDATE_SECRET = process.env.REVALIDATE_SECRET || "";
