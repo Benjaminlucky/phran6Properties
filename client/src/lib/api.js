@@ -4,7 +4,7 @@
  */
 
 export const API_URL = (
-  process.env.NEXT_PUBLIC_API_URL || "https://realtymartnew-production.up.railway.app"
+  process.env.NEXT_PUBLIC_API_URL || "https://phran6properties-production.up.railway.app"
 ).replace(/\/$/, "");
 
 // These are no-ops now — kept for compatibility but do nothing
@@ -40,18 +40,25 @@ async function fetcher(endpoint, options = {}) {
   return data;
 }
 
-export async function serverFetch(endpoint, options = {}) {
+export async function serverFetch(endpoint, options = {}, timeoutMs = 15000) {
   const base = process.env.API_URL || API_URL;
-  const res = await fetch(`${base}${endpoint}`, {
-    ...options,
-    headers: { "Content-Type": "application/json", ...options.headers },
-    next: options.next || { revalidate: 300 },
-  });
-  if (!res.ok) {
-    const d = await res.json().catch(() => ({}));
-    throw new Error(d.message || `Server fetch failed: ${res.status}`);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(`${base}${endpoint}`, {
+      ...options,
+      headers: { "Content-Type": "application/json", ...options.headers },
+      next: options.next || { revalidate: 300 },
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      throw new Error(d.message || `Server fetch failed: ${res.status}`);
+    }
+    return res.json();
+  } finally {
+    clearTimeout(timer);
   }
-  return res.json();
 }
 
 function clean(p) {

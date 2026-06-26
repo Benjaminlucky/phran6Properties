@@ -94,16 +94,24 @@ const VAR_MAP = [
 
 async function getSettings() {
   try {
-    const apiBase =
+    const apiBase = (
       process.env.API_URL ||
       process.env.NEXT_PUBLIC_API_URL ||
-      "http://localhost:5000";
-    const res = await fetch(`${apiBase}/settings`, {
-      next: { revalidate: 30 },
-    });
-    if (!res.ok) return {};
-    const json = await res.json();
-    return json?.data?.settings || {};
+      "https://phran6properties-production.up.railway.app"
+    ).replace(/\/$/, "");
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15000);
+    try {
+      const res = await fetch(`${apiBase}/settings`, {
+        next: { revalidate: 30 },
+        signal: controller.signal,
+      });
+      if (!res.ok) return {};
+      const json = await res.json();
+      return json?.data?.settings || {};
+    } finally {
+      clearTimeout(timer);
+    }
   } catch {
     return {};
   }
