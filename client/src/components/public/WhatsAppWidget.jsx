@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import Image from "next/image";
 import { X, Phone } from "lucide-react";
 
 // ── WhatsApp SVG logo ─────────────────────────────────────────────
@@ -55,13 +56,12 @@ function Initials({ name, size = 56 }) {
   );
 }
 
-const STORAGE_KEY = "wa_widget_dismissed_until";
-const AUTO_OPEN_DELAY = 3500; // ms before auto-opening
-
 export default function WhatsAppWidget({ settings = {} }) {
   const [open, setOpen] = useState(false);
   const [visible, setVisible] = useState(false);
   const [animate, setAnimate] = useState(false);
+  const closeBtnRef = useRef(null);
+  const bubbleBtnRef = useRef(null);
 
   const enabled = settings.wa_enabled !== "false";
   const agentName = settings.wa_name || "Lucky Benjamin";
@@ -86,19 +86,19 @@ export default function WhatsAppWidget({ settings = {} }) {
     return () => clearTimeout(t);
   }, [enabled]);
 
-  // Auto-open once after delay (respects 24-hour dismiss)
+  // Close on Escape, and move focus into the panel when it opens — the
+  // widget only ever opens from a direct click now (no auto-open), but a
+  // keyboard/screen-reader user who does open it still needs both.
   useEffect(() => {
-    if (!enabled) return;
-    try {
-      const until = Number(localStorage.getItem(STORAGE_KEY) || 0);
-      if (Date.now() < until) return; // still dismissed
-    } catch {}
-    const t = setTimeout(() => {
-      setOpen(true);
-      setAnimate(true);
-    }, AUTO_OPEN_DELAY);
-    return () => clearTimeout(t);
-  }, [enabled]);
+    if (!open) return;
+    closeBtnRef.current?.focus();
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") handleClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   const handleOpen = () => {
     setOpen(true);
@@ -108,9 +108,7 @@ export default function WhatsAppWidget({ settings = {} }) {
   const handleClose = () => {
     setAnimate(false);
     setTimeout(() => setOpen(false), 220);
-    try {
-      localStorage.setItem(STORAGE_KEY, String(Date.now() + 24 * 60 * 60 * 1000));
-    } catch {}
+    bubbleBtnRef.current?.focus();
   };
 
   if (!enabled) return null;
@@ -182,6 +180,7 @@ export default function WhatsAppWidget({ settings = {} }) {
             >
               {/* Close */}
               <button
+                ref={closeBtnRef}
                 onClick={handleClose}
                 aria-label="Close chat"
                 style={{
@@ -217,13 +216,12 @@ export default function WhatsAppWidget({ settings = {} }) {
                 {/* Avatar */}
                 <div style={{ position: "relative", flexShrink: 0 }}>
                   {agentAvatar ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <Image
                       src={agentAvatar}
                       alt={agentName}
+                      width={56}
+                      height={56}
                       style={{
-                        width: 56,
-                        height: 56,
                         borderRadius: "50%",
                         objectFit: "cover",
                         border: "2.5px solid rgba(255,255,255,0.3)",
@@ -327,13 +325,12 @@ export default function WhatsAppWidget({ settings = {} }) {
               >
                 <div style={{ flexShrink: 0, marginBottom: "4px" }}>
                   {agentAvatar ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <Image
                       src={agentAvatar}
                       alt=""
+                      width={28}
+                      height={28}
                       style={{
-                        width: 28,
-                        height: 28,
                         borderRadius: "50%",
                         objectFit: "cover",
                       }}
@@ -457,6 +454,7 @@ export default function WhatsAppWidget({ settings = {} }) {
 
         {/* ── Floating bubble ────────────────────────────────────── */}
         <button
+          ref={bubbleBtnRef}
           onClick={open ? handleClose : handleOpen}
           aria-label={open ? "Close chat" : "Chat with us on WhatsApp"}
           style={{

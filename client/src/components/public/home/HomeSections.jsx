@@ -173,17 +173,13 @@ export function FeaturedLands({ lands = [] }) {
                 background: hero.feature_image ? undefined : bgGradients[0],
               }}
             >
-              {/* ✅ plain <img> — avoids Next.js private-IP SSR blocking */}
               {hero.feature_image && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <Image
                   src={getImgUrl(hero.feature_image)}
                   alt={hero.estate_name}
+                  fill
+                  sizes="(max-width: 768px) 100vw, 60vw"
                   style={{
-                    position: "absolute",
-                    inset: 0,
-                    width: "100%",
-                    height: "100%",
                     objectFit: "cover",
                     transition: "transform 700ms",
                   }}
@@ -405,16 +401,12 @@ export function FeaturedLands({ lands = [] }) {
             >
               {land.feature_image ? (
                 <>
-                  {/* ✅ plain <img> — avoids Next.js private-IP SSR blocking */}
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
+                  <Image
                     src={getImgUrl(land.feature_image)}
                     alt={land.estate_name}
+                    fill
+                    sizes="(max-width: 768px) 100vw, 30vw"
                     style={{
-                      position: "absolute",
-                      inset: 0,
-                      width: "100%",
-                      height: "100%",
                       objectFit: "cover",
                       transition: "transform 500ms",
                     }}
@@ -930,19 +922,14 @@ export function FeaturedHouses({ houses = [] }) {
               transition: "opacity 300ms ease",
             }}
           >
-            {/* ✅ plain <img> — avoids Next.js private-IP SSR blocking */}
             {active.feature_image && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <Image
                 src={getImgUrl(active.feature_image)}
                 alt={active.title}
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                }}
+                fill
+                priority
+                sizes="(max-width: 1024px) 100vw, 55vw"
+                style={{ objectFit: "cover" }}
               />
             )}
 
@@ -1279,19 +1266,13 @@ export function FeaturedHouses({ houses = [] }) {
                     background: cardBgs[idx % cardBgs.length],
                   }}
                 >
-                  {/* ✅ plain <img> — avoids Next.js private-IP SSR blocking */}
                   {house.feature_image && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <Image
                       src={getImgUrl(house.feature_image)}
                       alt={house.title}
-                      style={{
-                        position: "absolute",
-                        inset: 0,
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "cover",
-                      }}
+                      fill
+                      sizes="72px"
+                      style={{ objectFit: "cover" }}
                     />
                   )}
                   {/* Mini dot pattern */}
@@ -1537,17 +1518,13 @@ export function PopularAreas({ areas = [] }) {
                 href={href}
                 className="group relative h-64 rounded-2xl overflow-hidden block"
               >
-                {/* ✅ plain <img> — avoids Next.js private-IP SSR blocking */}
                 {imageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <Image
                     src={imageUrl}
                     alt={area.name}
+                    fill
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                     style={{
-                      position: "absolute",
-                      inset: 0,
-                      width: "100%",
-                      height: "100%",
                       objectFit: "cover",
                       transition: "transform 500ms",
                     }}
@@ -1815,10 +1792,11 @@ export function Partners({ partners = [] }) {
               className="flex items-center justify-center opacity-50 hover:opacity-100 transition-opacity duration-300 grayscale hover:grayscale-0"
             >
               {partner.logo_url || partner.logo ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <Image
                   src={partner.logo_url || partner.logo}
                   alt={partner.name}
+                  width={120}
+                  height={40}
                   style={{
                     height: "40px",
                     width: "auto",

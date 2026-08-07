@@ -1284,6 +1284,11 @@ export default function AdminLandsPage() {
                       <td style={{ padding: "0.875rem 1rem" }}>
                         <button
                           onClick={() => toggleFeatured(land)}
+                          aria-label={
+                            land.featured
+                              ? `Remove ${land.estate_name} from featured`
+                              : `Mark ${land.estate_name} as featured`
+                          }
                           style={{
                             border: "none",
                             background: "none",
@@ -1308,12 +1313,14 @@ export default function AdminLandsPage() {
                         <div style={{ display: "flex", gap: "0.375rem" }}>
                           <button
                             onClick={() => setEditLand(land)}
+                            aria-label={`Edit ${land.estate_name}`}
                             style={S.actionBtn}
                           >
                             <Edit2 size={14} />
                           </button>
                           <button
                             onClick={() => setDeleteLand(land)}
+                            aria-label={`Delete ${land.estate_name}`}
                             style={{ ...S.actionBtn, color: "#ef4444" }}
                           >
                             <Trash2 size={14} />

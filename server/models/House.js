@@ -37,4 +37,4 @@ houseSchema.index({ category: 1 });
 houseSchema.index({ featured: 1 });
 houseSchema.index({ title: "text", description: "text", location: "text", state: "text" });
 
-module.exports = mongoose.model("House", houseSchema);
+module.exports = mongoose.models.House || mongoose.model("House", houseSchema);

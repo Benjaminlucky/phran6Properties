@@ -4,6 +4,22 @@ import HousesClient from "./HousesClient";
 
 export const revalidate = 300;
 
+// Filter params that produce a narrowed result set. Any of them (or a
+// page > 1) makes the URL a facet of /houses, not a page of its own.
+const FILTER_PARAMS = [
+  "state",
+  "location",
+  "status",
+  "category",
+  "bedrooms",
+  "maxPrice",
+];
+
+function hasValue(v) {
+  if (Array.isArray(v)) return v.some((x) => String(x).trim() !== "");
+  return typeof v === "string" ? v.trim() !== "" : v != null;
+}
+
 export async function generateMetadata({ searchParams }) {
   const params = await searchParams;
   const hasFilters = Object.values(params || {}).some((v) => v && v !== "1");
@@ -17,6 +33,14 @@ export async function generateMetadata({ searchParams }) {
     }
   }
 
+  // Paginated + filtered result sets must not compete with the canonical
+  // /houses page for indexing — noindex,follow them (links still crawled)
+  // while the canonical keeps pointing at the bare listing URL below.
+  const pageNum = Number(params?.page || 1);
+  const isPaginated = Number.isFinite(pageNum) && pageNum > 1;
+  const isFiltered = FILTER_PARAMS.some((k) => hasValue(params?.[k]));
+  const noIndex = isEmpty || isPaginated || isFiltered;
+
   try {
     const data = await serverFetch("/settings", { next: { revalidate: 300 } });
     const s = data?.data?.settings || data?.settings || {};
@@ -26,8 +50,10 @@ export async function generateMetadata({ searchParams }) {
     return {
       title: `House Listings — ${siteName}`,
       description: desc,
+      // Always the unfiltered listing — tells search engines the "real"
+      // page for any ?page= / ?state= / ?category= variant.
       alternates: { canonical: `${SITE_URL}/houses` },
-      ...(isEmpty && { robots: { index: false, follow: true } }),
+      ...(noIndex && { robots: { index: false, follow: true } }),
       openGraph: {
         title: `House Listings — ${siteName}`,
         description: desc,
@@ -42,7 +68,11 @@ export async function generateMetadata({ searchParams }) {
       },
     };
   } catch {
-    return { title: `House Listings — ${SITE_CONFIG.name}` };
+    return {
+      title: `House Listings — ${SITE_CONFIG.name}`,
+      alternates: { canonical: `${SITE_URL}/houses` },
+      ...(noIndex && { robots: { index: false, follow: true } }),
+    };
   }
 }
 

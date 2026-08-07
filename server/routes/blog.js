@@ -9,6 +9,7 @@ const {
   parsePagination,
 } = require("../lib/helpers");
 const { requireAuth } = require("../middleware/auth");
+const { publicCache } = require("../middleware/cache");
 const { upload, uploadToCloudinary } = require("../middleware/upload");
 const { BlogPost, BlogCategory } = require("../models/Blog");
 const { revalidate } = require("../lib/revalidate");
@@ -81,7 +82,7 @@ function blogPaths(slug) {
 // ══════════════════════════════════════════════════════════════════
 
 // GET /blog
-router.get("/", async (req, res, next) => {
+router.get("/", publicCache(), async (req, res, next) => {
   try {
     const { page, perPage, skip } = parsePagination(req.query);
     const { category, search, tag } = req.query;
@@ -121,7 +122,7 @@ router.get("/", async (req, res, next) => {
 });
 
 // GET /blog/recent
-router.get("/recent", async (req, res, next) => {
+router.get("/recent", publicCache(), async (req, res, next) => {
   try {
     const limit = Math.min(parseInt(req.query.limit) || 6, 12);
     const data = await BlogPost.find({ status: "published" })
@@ -136,7 +137,7 @@ router.get("/recent", async (req, res, next) => {
 });
 
 // GET /blog/categories
-router.get("/categories", async (req, res, next) => {
+router.get("/categories", publicCache(), async (req, res, next) => {
   try {
     const data = await BlogCategory.find({}).sort({ name: 1 }).lean();
     return ok(res, data);
@@ -146,7 +147,7 @@ router.get("/categories", async (req, res, next) => {
 });
 
 // GET /blog/:slug — public detail + increment views
-router.get("/:slug", async (req, res, next) => {
+router.get("/:slug", publicCache(), async (req, res, next) => {
   try {
     const post = await BlogPost.findOneAndUpdate(
       { slug: req.params.slug, status: "published" },

@@ -17,4 +17,4 @@ const reviewSchema = new mongoose.Schema(
 
 reviewSchema.index({ is_active: 1, sort_order: 1 });
 
-module.exports = mongoose.model("Review", reviewSchema);
+module.exports = mongoose.models.Review || mongoose.model("Review", reviewSchema);

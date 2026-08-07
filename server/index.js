@@ -172,10 +172,16 @@ app.use((err, req, res, next) => {
 });
 
 // ── Start ─────────────────────────────────────────────────────────
-app.listen(PORT, () => {
-  console.log(`\n🚀 NaijaRealty API running on port ${PORT}`);
-  console.log(`   Environment: ${process.env.NODE_ENV || "development"}`);
-  console.log(`   Health:      http://localhost:${PORT}/health\n`);
-});
+// Only bind a port when this file is the process entry point (`node index.js`,
+// `npm start`, nodemon). When it is merely `require`d — e.g. by supertest in
+// the test suite — export the app without listening, so tests get the Express
+// handler instead of a real server holding a port open.
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`\n🚀 NaijaRealty API running on port ${PORT}`);
+    console.log(`   Environment: ${process.env.NODE_ENV || "development"}`);
+    console.log(`   Health:      http://localhost:${PORT}/health\n`);
+  });
+}
 
 module.exports = app;

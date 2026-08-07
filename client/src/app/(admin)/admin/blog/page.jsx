@@ -1005,6 +1005,7 @@ function CategoriesModal({ categories, onClose, onRefresh }) {
                         type="button"
                         onClick={() => startEdit(cat)}
                         title="Rename"
+                        aria-label={`Rename category ${cat.name}`}
                         style={{
                           padding: "0.375rem",
                           borderRadius: "0.375rem",
@@ -1033,6 +1034,7 @@ function CategoriesModal({ categories, onClose, onRefresh }) {
                         onClick={() => handleDelete(id, cat.name)}
                         disabled={isDeleting}
                         title="Delete"
+                        aria-label={`Delete category ${cat.name}`}
                         style={{
                           padding: "0.375rem",
                           borderRadius: "0.375rem",
@@ -2108,6 +2110,7 @@ export default function AdminBlogPage() {
                   <button
                     onClick={() => openEdit(post)}
                     title="Edit"
+                    aria-label={`Edit ${post.title}`}
                     style={{
                       padding: "0.4rem",
                       borderRadius: "0.375rem",
@@ -2123,6 +2126,7 @@ export default function AdminBlogPage() {
                   <button
                     onClick={() => setDeleting(post)}
                     title="Delete"
+                    aria-label={`Delete ${post.title}`}
                     style={{
                       padding: "0.4rem",
                       borderRadius: "0.375rem",

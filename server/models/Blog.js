@@ -30,7 +30,7 @@ postSchema.index({ category: 1 });
 postSchema.index({ tags: 1 });
 postSchema.index({ title: "text", excerpt: "text", content: "text" });
 
-const BlogCategory = mongoose.model("BlogCategory", categorySchema);
-const BlogPost     = mongoose.model("BlogPost", postSchema);
+const BlogCategory = mongoose.models.BlogCategory || mongoose.model("BlogCategory", categorySchema);
+const BlogPost     = mongoose.models.BlogPost || mongoose.model("BlogPost", postSchema);
 
 module.exports = { BlogCategory, BlogPost };

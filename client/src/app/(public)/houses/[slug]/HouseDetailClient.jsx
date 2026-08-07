@@ -131,11 +131,17 @@ function Lightbox({ images, startIndex, onClose, title = "Property" }) {
           <ChevronLeft size={24} />
         </button>
       )}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
+      {/* Unknown natural size per photo — width/height are aspect-ratio hints
+          only; the width:auto/height:auto override makes Next.js render it
+          at its intrinsic size, capped by maxWidth/maxHeight below. */}
+      <Image
         src={images[current]}
         alt={`Photo ${current + 1}`}
+        width={1600}
+        height={1200}
         style={{
+          width: "auto",
+          height: "auto",
           maxWidth: "90vw",
           maxHeight: "85vh",
           objectFit: "contain",
@@ -181,6 +187,7 @@ function Lightbox({ images, startIndex, onClose, title = "Property" }) {
               key={i}
               onClick={() => setCurrent(i)}
               style={{
+                position: "relative",
                 flexShrink: 0,
                 width: "56px",
                 height: "44px",
@@ -192,13 +199,12 @@ function Lightbox({ images, startIndex, onClose, title = "Property" }) {
                 cursor: "pointer",
               }}
             >
-              {/* FIX: was <Image fill> which requires a positioned parent with dimensions.
-                  Also was referencing `title` from outer scope — now uses the prop. */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <Image
                 src={img}
                 alt={`${title} — gallery photo ${i + 1}`}
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                fill
+                sizes="56px"
+                style={{ objectFit: "cover" }}
               />
             </button>
           ))}
@@ -768,15 +774,12 @@ export default function HouseDetailClient({ house, settings, related }) {
                             position: "relative",
                           }}
                         >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
+                          <Image
                             src={img}
                             alt={`${title} — photo ${i + 1}`}
-                            style={{
-                              width: "100%",
-                              height: "100%",
-                              objectFit: "cover",
-                            }}
+                            fill
+                            sizes="100px"
+                            style={{ objectFit: "cover" }}
                           />
                           {i === 4 && allImages.length > 6 && (
                             <div

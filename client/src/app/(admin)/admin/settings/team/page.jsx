@@ -1110,6 +1110,7 @@ export default function TeamPage() {
                       <button
                         onClick={() => setModal({ type: "edit", member })}
                         title="Edit account"
+                        aria-label={`Edit account for ${member.name}`}
                         style={{
                           padding: "0.5rem",
                           borderRadius: "0.5rem",
@@ -1164,6 +1165,7 @@ export default function TeamPage() {
                         <button
                           onClick={() => handleDelete(member)}
                           title="Delete account"
+                          aria-label={`Delete account for ${member.name}`}
                           style={{
                             padding: "0.5rem",
                             borderRadius: "0.5rem",

@@ -13,6 +13,7 @@ const {
   parsePagination,
 } = require("../lib/helpers");
 const { requireAuth, requireSuperAdmin } = require("../middleware/auth");
+const { publicCache } = require("../middleware/cache");
 const { upload, uploadToCloudinary } = require("../middleware/upload");
 const { Enquiry, Setting, Media } = require("../models/Misc");
 const { PopularArea, Partner } = require("../models/Homepage");
@@ -306,7 +307,7 @@ router.delete("/admin/enquiries/:id", requireAuth, async (req, res, next) => {
 // ══════════════════════════════════════════════════════════════════
 
 // GET /about — public, ISR-cached by Next.js
-router.get("/about", async (req, res, next) => {
+router.get("/about", publicCache(), async (req, res, next) => {
   try {
     const doc = await Setting.findOne({ key: "about_page" }).lean();
     const data = doc?.value ? JSON.parse(doc.value) : {};
@@ -342,7 +343,9 @@ router.put(
 // ══════════════════════════════════════════════════════════════════
 
 // GET /settings — public
-router.get("/settings", async (req, res, next) => {
+// Hit on nearly every public page render (site name, logo, contact info,
+// theme) and changes rarely — the highest-value cache target in the API.
+router.get("/settings", publicCache(), async (req, res, next) => {
   try {
     const docs = await Setting.find({ group_name: "general" }).lean();
     const settings = docs.reduce((acc, s) => {
@@ -584,7 +587,7 @@ router.get("/admin/stats", requireAuth, async (req, res, next) => {
 // PUBLIC STATS  — GET /stats/public
 // ══════════════════════════════════════════════════════════════════
 
-router.get("/stats/public", async (req, res, next) => {
+router.get("/stats/public", publicCache(), async (req, res, next) => {
   try {
     const [landsCount, housesCount, enquiriesCount, landStates, houseStates] =
       await Promise.all([
@@ -616,7 +619,7 @@ router.get("/stats/public", async (req, res, next) => {
 // SEARCH
 // ══════════════════════════════════════════════════════════════════
 
-router.get("/search", async (req, res, next) => {
+router.get("/search", publicCache(), async (req, res, next) => {
   try {
     const { q } = req.query;
     if (!q || q.trim().length < 2) return ok(res, { lands: [], houses: [] });
@@ -788,7 +791,7 @@ router.delete(
 // ══════════════════════════════════════════════════════════════════
 
 // GET /popular-areas — public, returns only active areas ordered by sort_order
-router.get("/popular-areas", async (req, res, next) => {
+router.get("/popular-areas", publicCache(), async (req, res, next) => {
   try {
     const areas = await PopularArea.find({ is_active: true })
       .sort({ sort_order: 1, createdAt: 1 })
@@ -909,7 +912,7 @@ router.delete(
 // ══════════════════════════════════════════════════════════════════
 
 // GET /partners — public, active only
-router.get("/partners", async (req, res, next) => {
+router.get("/partners", publicCache(), async (req, res, next) => {
   try {
     const partners = await Partner.find({ is_active: true })
       .sort({ sort_order: 1, createdAt: 1 })

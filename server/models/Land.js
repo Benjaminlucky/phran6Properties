@@ -37,4 +37,4 @@ landSchema.index({ state: 1 });
 landSchema.index({ featured: 1 });
 landSchema.index({ estate_name: "text", overview_body: "text", location: "text", state: "text" });
 
-module.exports = mongoose.model("Land", landSchema);
+module.exports = mongoose.models.Land || mongoose.model("Land", landSchema);

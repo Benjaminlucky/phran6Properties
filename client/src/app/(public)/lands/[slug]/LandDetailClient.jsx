@@ -150,12 +150,17 @@ function Lightbox({ images, startIndex, onClose, title = "Property" }) {
         </button>
       )}
 
-      {/* Image */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
+      {/* Image — unknown natural size per photo, width/height are aspect
+          hints only; width:auto/height:auto renders at intrinsic size,
+          capped by maxWidth/maxHeight below. */}
+      <Image
         src={images[current]}
         alt={`Gallery image ${current + 1}`}
+        width={1600}
+        height={1200}
         style={{
+          width: "auto",
+          height: "auto",
           maxWidth: "90vw",
           maxHeight: "85vh",
           objectFit: "contain",
@@ -217,11 +222,12 @@ function Lightbox({ images, startIndex, onClose, title = "Property" }) {
                 position: "relative",
               }}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <Image
                 src={img}
                 alt={`${title} — gallery photo ${i + 1}`}
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                fill
+                sizes="56px"
+                style={{ objectFit: "cover" }}
               />
             </button>
           ))}
@@ -772,13 +778,12 @@ export default function LandDetailClient({ land, settings, related }) {
                             background: "#1e293b",
                           }}
                         >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
+                          <Image
                             src={img}
                             alt={`${estate_name} — photo ${i + 1}`}
+                            fill
+                            sizes="100px"
                             style={{
-                              width: "100%",
-                              height: "100%",
                               objectFit: "cover",
                             }}
                           />

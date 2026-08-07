@@ -207,6 +207,9 @@ function RepeatableList({ items, onChange, fields, addLabel }) {
         >
           <button
             onClick={() => remove(i)}
+            aria-label={`Remove ${
+              addLabel ? addLabel.replace(/^Add\s+/i, "") : "item"
+            } ${i + 1}`}
             style={{
               position: "absolute",
               top: "0.75rem",

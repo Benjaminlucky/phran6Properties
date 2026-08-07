@@ -1301,6 +1301,11 @@ export default function AdminHousesPage() {
                       <td style={{ padding: "0.875rem 1rem" }}>
                         <button
                           onClick={() => toggleFeatured(house)}
+                          aria-label={
+                            house.featured
+                              ? `Remove ${house.title} from featured`
+                              : `Mark ${house.title} as featured`
+                          }
                           style={{
                             border: "none",
                             background: "none",
@@ -1320,12 +1325,14 @@ export default function AdminHousesPage() {
                         <div style={{ display: "flex", gap: "0.375rem" }}>
                           <button
                             onClick={() => setEditHouse(house)}
+                            aria-label={`Edit ${house.title}`}
                             style={S.actionBtn}
                           >
                             <Edit2 size={14} />
                           </button>
                           <button
                             onClick={() => setDeleteHouse(house)}
+                            aria-label={`Delete ${house.title}`}
                             style={{ ...S.actionBtn, color: "#ef4444" }}
                           >
                             <Trash2 size={14} />

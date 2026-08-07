@@ -4,6 +4,7 @@ const router = require("express").Router();
 const Review = require("../models/review");
 const { ok, created, fail } = require("../lib/helpers");
 const { requireAuth } = require("../middleware/auth");
+const { publicCache } = require("../middleware/cache");
 const { revalidate } = require("../lib/revalidate");
 const { z } = require("zod");
 const {
@@ -39,7 +40,7 @@ const reviewUpdateSchema = reviewBaseSchema.partial();
 // ── GET /reviews — public ─────────────────────────────────────────
 // Returns only active reviews, ordered by sort_order then createdAt.
 // Consumed by the public homepage Testimonials section (ISR-cached).
-router.get("/reviews", async (req, res, next) => {
+router.get("/reviews", publicCache(), async (req, res, next) => {
   try {
     const limit = Math.min(parseInt(req.query.limit) || 20, 50);
     const reviews = await Review.find({ is_active: true })

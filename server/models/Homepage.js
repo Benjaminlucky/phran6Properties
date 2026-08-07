@@ -32,7 +32,7 @@ const partnerSchema = new mongoose.Schema(
 
 partnerSchema.index({ is_active: 1, sort_order: 1 });
 
-const PopularArea = mongoose.model("PopularArea", popularAreaSchema);
-const Partner = mongoose.model("Partner", partnerSchema);
+const PopularArea = mongoose.models.PopularArea || mongoose.model("PopularArea", popularAreaSchema);
+const Partner = mongoose.models.Partner || mongoose.model("Partner", partnerSchema);
 
 module.exports = { PopularArea, Partner };

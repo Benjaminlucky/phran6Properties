@@ -70,8 +70,8 @@ const mediaSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-const Enquiry = mongoose.model("Enquiry", enquirySchema);
-const Setting = mongoose.model("Setting", settingSchema);
-const Media = mongoose.model("Media", mediaSchema);
+const Enquiry = mongoose.models.Enquiry || mongoose.model("Enquiry", enquirySchema);
+const Setting = mongoose.models.Setting || mongoose.model("Setting", settingSchema);
+const Media = mongoose.models.Media || mongoose.model("Media", mediaSchema);
 
 module.exports = { Enquiry, Setting, Media };

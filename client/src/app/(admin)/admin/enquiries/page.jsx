@@ -1509,6 +1509,7 @@ export default function EnquiriesPage() {
                               onClick={() => handleDelete(e)}
                               disabled={deleting === id}
                               title="Delete"
+                              aria-label={`Delete enquiry from ${fullName(e)}`}
                               style={{
                                 background: "#FFF5F5",
                                 color: "#EF4444",

@@ -617,6 +617,7 @@ function PopularAreasSection() {
                   <button
                     onClick={() => handleDelete(area._id, area.name)}
                     disabled={deleting === area._id}
+                    aria-label={`Delete ${area.name}`}
                     style={{
                       background: "#FEE2E2",
                       border: "none",
@@ -1249,6 +1250,7 @@ function PartnersSection() {
                   <button
                     onClick={() => handleDelete(partner._id, partner.name)}
                     disabled={deleting === partner._id}
+                    aria-label={`Delete ${partner.name}`}
                     style={{
                       background: "#FEE2E2",
                       border: "none",

@@ -1,5 +1,6 @@
 import { Plus_Jakarta_Sans, Inter } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
+import SiteJsonLd from "@/components/shared/SiteJsonLd";
 import "./globals.css";
 
 const plusJakarta = Plus_Jakarta_Sans({
@@ -161,6 +162,9 @@ export default async function RootLayout({ children }) {
         )}
       </head>
       <body className="antialiased">
+        {/* Sitewide Organization + WebSite structured data — page-level
+            schema (listings, posts, breadcrumbs) is emitted per page. */}
+        <SiteJsonLd settings={settings} />
         {children}
         <Toaster
           richColors

@@ -325,6 +325,7 @@ function ReviewCard({ review, onEdit, onDelete, onToggle }) {
         <button
           onClick={handleDelete}
           disabled={deleting}
+          aria-label={`Delete review from ${review.name}`}
           style={{
             display: "flex",
             alignItems: "center",

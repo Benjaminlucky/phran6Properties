@@ -11,6 +11,7 @@ const {
   withFeatureImageFallbackList,
 } = require("../lib/helpers");
 const { requireAuth } = require("../middleware/auth");
+const { publicCache } = require("../middleware/cache");
 const { upload, uploadToCloudinary } = require("../middleware/upload");
 const Land = require("../models/Land");
 const { revalidate } = require("../lib/revalidate");
@@ -85,7 +86,7 @@ function landPaths(slug) {
 // ══════════════════════════════════════════════════════════════════
 
 // GET /lands — public listing with filters + pagination
-router.get("/", async (req, res, next) => {
+router.get("/", publicCache(), async (req, res, next) => {
   try {
     const { page, perPage, skip } = parsePagination(req.query);
     const {
@@ -134,7 +135,7 @@ router.get("/", async (req, res, next) => {
 });
 
 // GET /lands/featured
-router.get("/featured", async (req, res, next) => {
+router.get("/featured", publicCache(), async (req, res, next) => {
   try {
     const limit = Math.min(parseInt(req.query.limit) || 6, 12);
     const data = await Land.find({ featured: true, status: { $ne: "sold" } })
@@ -148,7 +149,7 @@ router.get("/featured", async (req, res, next) => {
 });
 
 // GET /lands/:slug — public detail + increment views
-router.get("/:slug", async (req, res, next) => {
+router.get("/:slug", publicCache(), async (req, res, next) => {
   try {
     const land = await Land.findOneAndUpdate(
       { slug: req.params.slug },
