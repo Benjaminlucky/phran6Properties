@@ -19,9 +19,21 @@ async function fetcher(endpoint, options = {}) {
     if (token) headers["Authorization"] = `Bearer ${token}`;
   }
 
+  // Opt plain GET reads into Next.js ISR caching so segment-level
+  // `export const revalidate = 300` actually has something to cache.
+  // Next 15+ defaults uncustomized fetches to no-store, which silently
+  // defeated the ISR config already declared on the public pages.
+  // Mutations (POST/PUT/PATCH/DELETE) are never cached, and any caller
+  // that already specified its own `cache`/`next` option wins.
+  const method = (options.method || "GET").toUpperCase();
+  const cacheOpts =
+    method === "GET" && options.cache === undefined && options.next === undefined
+      ? { next: { revalidate: 300 } }
+      : {};
+
   let res;
   try {
-    res = await fetch(url, { ...options, headers });
+    res = await fetch(url, { ...options, ...cacheOpts, headers });
   } catch (err) {
     throw new Error(`Cannot reach server at ${API_URL}. Make sure NEXT_PUBLIC_API_URL is set and the backend is running.`);
   }

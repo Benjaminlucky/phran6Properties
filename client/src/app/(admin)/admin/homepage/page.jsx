@@ -366,7 +366,13 @@ function PopularAreasSection() {
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (id, areaName) => {
+    if (
+      !confirm(
+        `Delete "${areaName || "this area"}"? This cannot be undone.`,
+      )
+    )
+      return;
     setDeleting(id);
     try {
       const res = await popularAreasApi.delete(id);
@@ -609,7 +615,7 @@ function PopularAreasSection() {
                     <Edit2 size={13} /> Edit
                   </button>
                   <button
-                    onClick={() => handleDelete(area._id)}
+                    onClick={() => handleDelete(area._id, area.name)}
                     disabled={deleting === area._id}
                     style={{
                       background: "#FEE2E2",
@@ -958,7 +964,13 @@ function PartnersSection() {
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (id, partnerName) => {
+    if (
+      !confirm(
+        `Delete "${partnerName || "this partner"}"? This cannot be undone.`,
+      )
+    )
+      return;
     setDeleting(id);
     try {
       const res = await partnersApi.delete(id);
@@ -1235,7 +1247,7 @@ function PartnersSection() {
                     <Edit2 size={13} /> Edit
                   </button>
                   <button
-                    onClick={() => handleDelete(partner._id)}
+                    onClick={() => handleDelete(partner._id, partner.name)}
                     disabled={deleting === partner._id}
                     style={{
                       background: "#FEE2E2",

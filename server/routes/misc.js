@@ -275,6 +275,11 @@ router.put("/admin/settings", requireAuth, async (req, res, next) => {
       ),
     );
     await Promise.all(ops);
+
+    // Site settings drive the shared public layout (site name, logo,
+    // contact details, theme) — revalidate the public pages that render it.
+    revalidate(["/", "/houses", "/lands", "/blog", "/about", "/contact"]);
+
     return ok(res, null, "Settings saved");
   } catch (err) {
     next(err);
