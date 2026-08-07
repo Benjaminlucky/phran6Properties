@@ -7,6 +7,8 @@ const {
   fail,
   paginated,
   parsePagination,
+  withFeatureImageFallback,
+  withFeatureImageFallbackList,
 } = require("../lib/helpers");
 const { requireAuth } = require("../middleware/auth");
 const { upload, uploadToCloudinary } = require("../middleware/upload");
@@ -70,7 +72,7 @@ router.get("/", async (req, res, next) => {
         .lean(),
       House.countDocuments(filter),
     ]);
-    return paginated(res, { data, total, page, perPage });
+    return paginated(res, { data: withFeatureImageFallbackList(data), total, page, perPage });
   } catch (err) {
     next(err);
   }
@@ -84,7 +86,7 @@ router.get("/featured", async (req, res, next) => {
       .sort({ createdAt: -1 })
       .limit(limit)
       .lean();
-    return ok(res, data);
+    return ok(res, withFeatureImageFallbackList(data));
   } catch (err) {
     next(err);
   }
@@ -99,7 +101,7 @@ router.get("/:slug", async (req, res, next) => {
       { new: true },
     ).lean();
     if (!house) return fail(res, "House listing not found", 404);
-    return ok(res, house);
+    return ok(res, withFeatureImageFallback(house));
   } catch (err) {
     next(err);
   }
@@ -114,7 +116,7 @@ router.get("/admin/houses/:id", requireAuth, async (req, res, next) => {
   try {
     const house = await House.findById(req.params.id).lean();
     if (!house) return fail(res, "House listing not found", 404);
-    return ok(res, house);
+    return ok(res, withFeatureImageFallback(house));
   } catch (err) {
     next(err);
   }
@@ -142,7 +144,7 @@ router.get("/admin/houses", requireAuth, async (req, res, next) => {
         .lean(),
       House.countDocuments(filter),
     ]);
-    return paginated(res, { data, total, page, perPage });
+    return paginated(res, { data: withFeatureImageFallbackList(data), total, page, perPage });
   } catch (err) {
     next(err);
   }
@@ -180,6 +182,13 @@ router.post(
       if (req.files?.length) {
         body.feature_image = req.files[0].path || req.files[0].secure_url;
         body.gallery = req.files.map((f) => f.path || f.secure_url);
+      }
+
+      // The admin form's Feature Image and Gallery uploaders are
+      // independent — if only the gallery was used, default the
+      // feature image to the first gallery photo instead of blank.
+      if (!body.feature_image && Array.isArray(body.gallery) && body.gallery.length) {
+        body.feature_image = body.gallery[0];
       }
 
       if (!body.title) return fail(res, "Title is required");
@@ -249,6 +258,12 @@ router.put(
       if (req.files?.length) {
         body.feature_image = req.files[0].path || req.files[0].secure_url;
         body.gallery = req.files.map((f) => f.path || f.secure_url);
+      }
+
+      // Same self-heal as create: don't let an edit save over a real
+      // gallery with a blank feature image.
+      if (!body.feature_image && Array.isArray(body.gallery) && body.gallery.length) {
+        body.feature_image = body.gallery[0];
       }
 
       const house = await House.findByIdAndUpdate(req.params.id, body, {

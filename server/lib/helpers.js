@@ -23,6 +23,24 @@ function parsePagination(q) {
   return { page, perPage, skip };
 }
 
+// ── Image fallback ────────────────────────────────────────────────
+// Listing cards/homepage sections render `feature_image` directly and
+// don't fall back to `gallery`. If an admin only used the gallery
+// uploader and never set a feature image, the card renders blank even
+// though real photos exist — backfill it here so every consumer
+// (public listings, admin table, OG/structured data) sees a photo.
+function withFeatureImageFallback(doc) {
+  if (!doc) return doc;
+  if (!doc.feature_image && Array.isArray(doc.gallery) && doc.gallery.length) {
+    doc.feature_image = doc.gallery[0];
+  }
+  return doc;
+}
+function withFeatureImageFallbackList(docs) {
+  (docs || []).forEach(withFeatureImageFallback);
+  return docs;
+}
+
 // ── Slug generation ───────────────────────────────────────────────
 function makeSlug(text) {
   return slugifyLib(text, { lower: true, strict: true, trim: true });
@@ -41,4 +59,14 @@ async function uniqueSlug(Model, baseText, excludeId = null) {
   }
 }
 
-module.exports = { ok, created, fail, paginated, parsePagination, makeSlug, uniqueSlug };
+module.exports = {
+  ok,
+  created,
+  fail,
+  paginated,
+  parsePagination,
+  makeSlug,
+  uniqueSlug,
+  withFeatureImageFallback,
+  withFeatureImageFallbackList,
+};
