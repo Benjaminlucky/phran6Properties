@@ -54,6 +54,22 @@ function resolveFromAddress(settingValue) {
 
 // ── Email Templates ────────────────────────────────────────────────────────
 
+/**
+ * Escape a value for safe interpolation into HTML — both text nodes and
+ * attribute values (e.g. inside href="..."). Every enquiry field below is
+ * submitted by an anonymous public visitor, so none of it can be trusted
+ * to reach this template unescaped.
+ */
+function escapeHtml(value) {
+  if (value === null || value === undefined) return "";
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function buildEnquiryEmailHtml(enquiry) {
   const {
     first_name,
@@ -70,7 +86,21 @@ function buildEnquiryEmailHtml(enquiry) {
     createdAt,
   } = enquiry;
 
-  const fullName = [first_name, last_name].filter(Boolean).join(" ");
+  const fullName = escapeHtml(
+    [first_name, last_name].filter(Boolean).join(" "),
+  );
+  const safeFirstName = escapeHtml(first_name);
+  const safePhone = escapeHtml(phone);
+  const safeEmail = escapeHtml(email);
+  const safeInquiryType = escapeHtml(inquiry_type);
+  const safePropertyType = escapeHtml(property_type);
+  const safeBudget = escapeHtml(budget);
+  const safePreferredLocation = escapeHtml(preferred_location);
+  const safeListingType = escapeHtml(listing_type);
+  const safeSource = escapeHtml(source);
+  const safeMessage = message
+    ? escapeHtml(message).replace(/\n/g, "<br/>")
+    : "";
   const submittedAt = new Date(createdAt || Date.now()).toLocaleString(
     "en-NG",
     { timeZone: "Africa/Lagos", dateStyle: "full", timeStyle: "short" },
@@ -131,32 +161,32 @@ function buildEnquiryEmailHtml(enquiry) {
             <td style="padding:32px;">
 
               <h2 style="margin:0 0 4px;font-size:22px;color:#0f172a;">Enquiry Details</h2>
-              <p style="margin:0 0 24px;color:#94a3b8;font-size:13px;">Submitted on ${submittedAt} via ${source || "website"}</p>
+              <p style="margin:0 0 24px;color:#94a3b8;font-size:13px;">Submitted on ${submittedAt} via ${safeSource || "website"}</p>
 
               <!-- Contact info -->
               <h3 style="margin:0 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:0.08em;color:#94a3b8;font-weight:600;">Contact Information</h3>
               <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;margin-bottom:24px;">
                 ${row("Full Name", fullName)}
-                ${row("Phone", `<a href="tel:${phone}" style="color:#ff6b6b;text-decoration:none;">${phone}</a>`)}
-                ${row("Email", email ? `<a href="mailto:${email}" style="color:#ff6b6b;text-decoration:none;">${email}</a>` : "")}
+                ${row("Phone", `<a href="tel:${safePhone}" style="color:#ff6b6b;text-decoration:none;">${safePhone}</a>`)}
+                ${row("Email", safeEmail ? `<a href="mailto:${safeEmail}" style="color:#ff6b6b;text-decoration:none;">${safeEmail}</a>` : "")}
               </table>
 
               <!-- Property preferences -->
               <h3 style="margin:0 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:0.08em;color:#94a3b8;font-weight:600;">Property Preferences</h3>
               <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;margin-bottom:24px;">
-                ${row("Inquiry Type", inquiry_type)}
-                ${row("Property Type", property_type)}
-                ${row("Budget", budget)}
-                ${row("Preferred Location", preferred_location)}
-                ${row("Listing Type", listing_type)}
+                ${row("Inquiry Type", safeInquiryType)}
+                ${row("Property Type", safePropertyType)}
+                ${row("Budget", safeBudget)}
+                ${row("Preferred Location", safePreferredLocation)}
+                ${row("Listing Type", safeListingType)}
               </table>
 
               <!-- Message -->
               ${
-                message
+                safeMessage
                   ? `<h3 style="margin:0 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:0.08em;color:#94a3b8;font-weight:600;">Message</h3>
                 <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin-bottom:24px;">
-                  <p style="margin:0;color:#334155;font-size:14px;line-height:1.6;">${message.replace(/\n/g, "<br/>")}</p>
+                  <p style="margin:0;color:#334155;font-size:14px;line-height:1.6;">${safeMessage}</p>
                 </div>`
                   : ""
               }
@@ -165,12 +195,12 @@ function buildEnquiryEmailHtml(enquiry) {
               <table width="100%" cellpadding="0" cellspacing="0">
                 <tr>
                   <td>
-                    <a href="tel:${phone}" style="display:inline-block;background:linear-gradient(135deg,#ff6b6b,#e85555);color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;margin-right:12px;">
-                      📞 Call ${first_name}
+                    <a href="tel:${safePhone}" style="display:inline-block;background:linear-gradient(135deg,#ff6b6b,#e85555);color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;margin-right:12px;">
+                      📞 Call ${safeFirstName}
                     </a>
                     ${
-                      email
-                        ? `<a href="mailto:${email}" style="display:inline-block;background:#0f172a;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">
+                      safeEmail
+                        ? `<a href="mailto:${safeEmail}" style="display:inline-block;background:#0f172a;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">
                       ✉️ Reply by Email
                     </a>`
                         : ""

@@ -22,13 +22,108 @@ const House = require("../models/House");
 const { BlogPost } = require("../models/Blog");
 const { sendEnquiryNotification } = require("../services/email");
 const { revalidate } = require("../lib/revalidate");
+const { z } = require("zod");
+const {
+  validateBody,
+  optionalString,
+  requiredString,
+  optionalNumber,
+  optionalBoolean,
+  optionalEnum,
+} = require("../middleware/validate");
+
+// ══════════════════════════════════════════════════════════════════
+// WRITE SCHEMAS
+// ══════════════════════════════════════════════════════════════════
+// Every schema below doubles as an allowlist: zod strips keys it does
+// not define, so nothing outside these shapes can reach a Mongoose
+// create/update call.
+
+const enquiryCreateSchema = z.object({
+  first_name: requiredString("First name is required"),
+  last_name: optionalString,
+  email: z.string().max(320).optional(),
+  phone: requiredString("Phone number is required"),
+  inquiry_type: optionalString,
+  property_type: optionalString,
+  budget: optionalString,
+  preferred_location: optionalString,
+  message: optionalString,
+  listing_type: optionalEnum(["land", "house", "general"]),
+  // Non-ObjectId values are already discarded by the handler
+  listing_id: optionalString,
+  source: optionalString,
+});
+
+const enquiryUpdateSchema = z.object({
+  status: optionalEnum(["new", "read", "replied", "closed"]),
+  notes: optionalString,
+});
+
+// The about page is a free-form JSON blob rendered by the client; we only
+// enforce that it is an object (not an array/string/number).
+const aboutSchema = z.record(z.string(), z.unknown());
+
+// Settings are a flat { key: value } map with operator-defined keys.
+const settingsSchema = z.record(
+  z.string().min(1).max(100),
+  z.union([z.string(), z.number(), z.boolean(), z.null()]),
+);
+
+const mediaUploadSchema = z.object({ folder: optionalString });
+const mediaUpdateSchema = z.object({ alt_text: optionalString });
+
+const teamRole = optionalEnum(["super_admin", "admin", "editor"]);
+
+const teamCreateSchema = z.object({
+  first_name: optionalString,
+  last_name: optionalString,
+  name: optionalString,
+  email: z.string().trim().min(1, "Email is required").max(320),
+  // Never trimmed/transformed — the raw value is what gets hashed.
+  password: z.string().min(1, "Password is required"),
+  role: teamRole,
+});
+
+const teamUpdateSchema = z.object({
+  first_name: optionalString,
+  last_name: optionalString,
+  name: optionalString,
+  email: optionalString,
+  role: teamRole,
+  phone: optionalString,
+  bio: optionalString,
+});
+
+const popularAreaCreateSchema = z.object({
+  name: requiredString("Name is required"),
+  location: requiredString("Location is required"),
+  count: optionalString,
+  link_path: optionalString,
+  image_url: optionalString,
+  sort_order: optionalNumber,
+  is_active: optionalBoolean,
+});
+const popularAreaUpdateSchema = popularAreaCreateSchema.partial();
+
+const partnerCreateSchema = z.object({
+  name: requiredString("Name is required"),
+  website: optionalString,
+  logo_url: optionalString,
+  sort_order: optionalNumber,
+  is_active: optionalBoolean,
+});
+const partnerUpdateSchema = partnerCreateSchema.partial();
 
 // ══════════════════════════════════════════════════════════════════
 // ENQUIRIES
 // ══════════════════════════════════════════════════════════════════
 
 // POST /enquiries — public submission
-router.post("/enquiries", async (req, res, next) => {
+router.post(
+  "/enquiries",
+  validateBody(enquiryCreateSchema),
+  async (req, res, next) => {
   try {
     const {
       first_name,
@@ -116,7 +211,8 @@ router.post("/enquiries", async (req, res, next) => {
   } catch (err) {
     next(err);
   }
-});
+  },
+);
 
 // GET /admin/enquiries
 router.get("/admin/enquiries", requireAuth, async (req, res, next) => {
@@ -174,7 +270,11 @@ router.get("/admin/enquiries/:id", requireAuth, async (req, res, next) => {
 });
 
 // PUT /admin/enquiries/:id — update status / notes
-router.put("/admin/enquiries/:id", requireAuth, async (req, res, next) => {
+router.put(
+  "/admin/enquiries/:id",
+  requireAuth,
+  validateBody(enquiryUpdateSchema),
+  async (req, res, next) => {
   try {
     const { status, notes } = req.body;
     const doc = await Enquiry.findByIdAndUpdate(
@@ -187,7 +287,8 @@ router.put("/admin/enquiries/:id", requireAuth, async (req, res, next) => {
   } catch (err) {
     next(err);
   }
-});
+  },
+);
 
 // DELETE /admin/enquiries/:id
 router.delete("/admin/enquiries/:id", requireAuth, async (req, res, next) => {
@@ -216,7 +317,11 @@ router.get("/about", async (req, res, next) => {
 });
 
 // PUT /admin/about — protected, saves the full about page JSON blob
-router.put("/admin/about", requireAuth, async (req, res, next) => {
+router.put(
+  "/admin/about",
+  requireAuth,
+  validateBody(aboutSchema),
+  async (req, res, next) => {
   try {
     const value = JSON.stringify(req.body);
     await Setting.findOneAndUpdate(
@@ -229,7 +334,8 @@ router.put("/admin/about", requireAuth, async (req, res, next) => {
   } catch (err) {
     next(err);
   }
-});
+  },
+);
 
 // ══════════════════════════════════════════════════════════════════
 // SETTINGS
@@ -264,7 +370,11 @@ router.get("/admin/settings", requireAuth, async (req, res, next) => {
 });
 
 // PUT /admin/settings
-router.put("/admin/settings", requireAuth, async (req, res, next) => {
+router.put(
+  "/admin/settings",
+  requireAuth,
+  validateBody(settingsSchema),
+  async (req, res, next) => {
   try {
     const updates = req.body; // { key: value, ... }
     const ops = Object.entries(updates).map(([key, value]) =>
@@ -284,7 +394,8 @@ router.put("/admin/settings", requireAuth, async (req, res, next) => {
   } catch (err) {
     next(err);
   }
-});
+  },
+);
 
 // ══════════════════════════════════════════════════════════════════
 // MEDIA
@@ -318,6 +429,8 @@ router.post(
   requireAuth,
   upload.single("file"),
   uploadToCloudinary,
+  // after multer — req.body isn't populated until the multipart body is parsed
+  validateBody(mediaUploadSchema),
   async (req, res, next) => {
     try {
       if (!req.file) return fail(res, "No file uploaded");
@@ -342,7 +455,11 @@ router.post(
 );
 
 // PUT /admin/media/:id
-router.put("/admin/media/:id", requireAuth, async (req, res, next) => {
+router.put(
+  "/admin/media/:id",
+  requireAuth,
+  validateBody(mediaUpdateSchema),
+  async (req, res, next) => {
   try {
     const { alt_text } = req.body;
     const doc = await Media.findByIdAndUpdate(
@@ -355,7 +472,8 @@ router.put("/admin/media/:id", requireAuth, async (req, res, next) => {
   } catch (err) {
     next(err);
   }
-});
+  },
+);
 
 // DELETE /admin/media/:id
 router.delete("/admin/media/:id", requireAuth, async (req, res, next) => {
@@ -558,6 +676,7 @@ router.post(
   "/admin/team",
   requireAuth,
   requireSuperAdmin,
+  validateBody(teamCreateSchema),
   async (req, res, next) => {
     try {
       const {
@@ -594,7 +713,7 @@ router.post(
 );
 
 // PUT /admin/team/:id
-router.put("/admin/team/:id", requireAuth, async (req, res, next) => {
+router.put("/admin/team/:id", requireAuth, validateBody(teamUpdateSchema), async (req, res, next) => {
   try {
     const { first_name, last_name, name, email, role, phone, bio } = req.body;
 
@@ -699,6 +818,9 @@ router.post(
   requireAuth,
   upload.single("image"),
   uploadToCloudinary,
+  // after multer/Cloudinary — req.body isn't populated until the
+  // multipart body is parsed
+  validateBody(popularAreaCreateSchema),
   async (req, res, next) => {
     try {
       const { name, location, count, link_path, sort_order, is_active } =
@@ -733,6 +855,7 @@ router.put(
   requireAuth,
   upload.single("image"),
   uploadToCloudinary,
+  validateBody(popularAreaUpdateSchema),
   async (req, res, next) => {
     try {
       const { name, location, count, link_path, sort_order, is_active } =
@@ -816,6 +939,7 @@ router.post(
   requireAuth,
   upload.single("logo"),
   uploadToCloudinary,
+  validateBody(partnerCreateSchema),
   async (req, res, next) => {
     try {
       const { name, website, sort_order, is_active } = req.body;
@@ -846,6 +970,7 @@ router.put(
   requireAuth,
   upload.single("logo"),
   uploadToCloudinary,
+  validateBody(partnerUpdateSchema),
   async (req, res, next) => {
     try {
       const { name, website, sort_order, is_active } = req.body;

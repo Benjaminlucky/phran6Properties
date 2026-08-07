@@ -14,8 +14,63 @@ const { requireAuth } = require("../middleware/auth");
 const { upload, uploadToCloudinary } = require("../middleware/upload");
 const Land = require("../models/Land");
 const { revalidate } = require("../lib/revalidate");
+const { z } = require("zod");
+const {
+  formatIssues,
+  optionalString,
+  requiredString,
+  optionalNumber,
+  optionalBoolean,
+  optionalEnum,
+  optionalStringArray,
+} = require("../middleware/validate");
 
 const escapeRegex = (s) => s.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
+
+// ── Write allowlist ───────────────────────────────────────────────
+// Mirrors models/Land.js. Server-managed fields (_id, __v, slug,
+// views_count, createdAt, updatedAt) are deliberately absent — zod
+// strips unknown keys, so a schema is the write allowlist.
+const landBaseSchema = z.object({
+  estate_name: requiredString("Estate name is required"),
+  price: optionalNumber,
+  title_type: optionalEnum([
+    "c_of_o",
+    "governors_consent",
+    "deed_of_assignment",
+    "excision",
+    "gazette",
+    "freehold",
+    "leasehold",
+    "survey_plan",
+  ]),
+  size: optionalString,
+  overview_title: optionalString,
+  overview_body: optionalString,
+  amenities: optionalStringArray,
+  neighborhood: optionalStringArray,
+  description: optionalString,
+  installment_plan: optionalStringArray,
+  latitude: optionalNumber,
+  longitude: optionalNumber,
+  payment_plan: optionalString,
+  initial_deposit_pct: optionalNumber,
+  feature_image: optionalString,
+  gallery: optionalStringArray,
+  youtube_url: optionalString,
+  address: optionalString,
+  location: optionalString,
+  state: optionalString,
+  lga: optionalString,
+  meta_title: optionalString,
+  meta_description: optionalString,
+  status: optionalEnum(["available", "sold", "reserved", "coming_soon"]),
+  featured: optionalBoolean,
+});
+
+const landCreateSchema = landBaseSchema;
+// Updates are PATCH-style — every field is optional, including estate_name.
+const landUpdateSchema = landBaseSchema.partial();
 
 // ── Revalidation path sets ────────────────────────────────────────
 // Called after every mutation so the public site reflects changes
@@ -189,13 +244,19 @@ router.post(
       }
 
       if (!body.estate_name) return fail(res, "Estate name is required");
-      if (!body.slug)
-        body.slug = body.estate_name
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, "-")
-          .replace(/^-|-$/g, "");
 
-      const land = await Land.create(body);
+      // ── Validate + allowlist the normalized payload ─────────────
+      const parsed = landCreateSchema.safeParse(body);
+      if (!parsed.success) return fail(res, formatIssues(parsed.error), 400);
+      const data = parsed.data;
+
+      // slug is server-generated — never taken from the request
+      data.slug = data.estate_name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "");
+
+      const land = await Land.create(data);
 
       // ── Revalidate public pages ──────────────────────────────────
       revalidate(landPaths(land.slug));
@@ -216,11 +277,6 @@ router.put(
   async (req, res, next) => {
     try {
       const body = { ...req.body };
-
-      // Strip immutable / server-managed fields the client may echo back
-      for (const k of ["_id", "__v", "createdAt", "updatedAt", "views_count", "slug"]) {
-        delete body[k];
-      }
 
       for (const f of ["amenities", "gallery", "installment_plan"]) {
         if (typeof body[f] === "string") {
@@ -256,7 +312,14 @@ router.put(
         body.feature_image = body.gallery[0];
       }
 
-      const land = await Land.findByIdAndUpdate(req.params.id, body, {
+      // ── Validate + allowlist the normalized payload ─────────────
+      // Replaces the old immutable-field denylist: only fields defined
+      // on the schema survive, so _id / __v / slug / views_count /
+      // timestamps (and anything else) are dropped automatically.
+      const parsed = landUpdateSchema.safeParse(body);
+      if (!parsed.success) return fail(res, formatIssues(parsed.error), 400);
+
+      const land = await Land.findByIdAndUpdate(req.params.id, parsed.data, {
         new: true,
         runValidators: true,
       }).lean();

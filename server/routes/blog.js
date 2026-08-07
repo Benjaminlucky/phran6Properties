@@ -12,8 +12,64 @@ const { requireAuth } = require("../middleware/auth");
 const { upload, uploadToCloudinary } = require("../middleware/upload");
 const { BlogPost, BlogCategory } = require("../models/Blog");
 const { revalidate } = require("../lib/revalidate");
+const { z } = require("zod");
+const {
+  validateBody,
+  formatIssues,
+  blankToUndefined,
+  optionalString,
+  requiredString,
+  optionalNumber,
+  optionalEnum,
+  optionalStringArray,
+  optionalDate,
+  optionalObjectId,
+} = require("../middleware/validate");
 
 const escapeRegex = (s) => s.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
+
+// ── Write allowlists ──────────────────────────────────────────────
+// Mirrors models/Blog.js. `author`, `views_count`, `_id`, `__v` and the
+// timestamps are deliberately absent so they can never be set from a
+// request — zod strips every key the schema doesn't define.
+const slugField = z.preprocess(
+  blankToUndefined,
+  z
+    .string()
+    .trim()
+    .regex(
+      /^[a-z0-9_-]+$/,
+      "may only contain lowercase letters, numbers, hyphens and underscores",
+    )
+    .optional(),
+);
+
+const postBaseSchema = z.object({
+  title: requiredString("Title is required"),
+  // Editable from the admin post form (with a live URL preview), so
+  // unlike houses/lands the slug stays client-settable — but validated.
+  slug: slugField,
+  content: optionalString,
+  excerpt: optionalString,
+  cover_image: optionalString,
+  category: optionalObjectId,
+  author_name: optionalString,
+  status: optionalEnum(["draft", "published"]),
+  reading_time: optionalNumber,
+  tags: optionalStringArray,
+  meta_title: optionalString,
+  meta_description: optionalString,
+  published_at: optionalDate,
+});
+
+const postCreateSchema = postBaseSchema;
+const postUpdateSchema = postBaseSchema.partial();
+
+const categoryCreateSchema = z.object({
+  name: requiredString("Category name is required"),
+  slug: slugField,
+});
+const categoryUpdateSchema = categoryCreateSchema;
 
 function blogPaths(slug) {
   const base = ["/blog"];
@@ -178,17 +234,23 @@ router.post(
       if (req.file) body.cover_image = req.file.path || req.file.secure_url;
 
       if (!body.title) return fail(res, "Title is required");
-      if (!body.slug)
-        body.slug = body.title
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, "-")
-          .replace(/^-|-$/g, "");
 
       if (body.status === "published" && !body.published_at) {
         body.published_at = new Date();
       }
 
-      const post = await BlogPost.create(body);
+      // ── Validate + allowlist the normalized payload ─────────────
+      const parsed = postCreateSchema.safeParse(body);
+      if (!parsed.success) return fail(res, formatIssues(parsed.error), 400);
+      const data = parsed.data;
+
+      if (!data.slug)
+        data.slug = data.title
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-|-$/g, "");
+
+      const post = await BlogPost.create(data);
 
       // ── Revalidate when published ──────────────────────────────
       // Only revalidate for published posts — drafts don't affect public pages
@@ -236,7 +298,13 @@ router.put(
         body.published_at = new Date();
       }
 
-      const post = await BlogPost.findByIdAndUpdate(req.params.id, body, {
+      // ── Validate + allowlist the normalized payload ─────────────
+      // Only schema-defined fields survive, so _id / __v / author /
+      // views_count / timestamps can't be mass-assigned from the body.
+      const parsed = postUpdateSchema.safeParse(body);
+      if (!parsed.success) return fail(res, formatIssues(parsed.error), 400);
+
+      const post = await BlogPost.findByIdAndUpdate(req.params.id, parsed.data, {
         new: true,
         runValidators: true,
       }).lean();
@@ -271,23 +339,29 @@ router.delete("/admin/blog/:id", requireAuth, async (req, res, next) => {
 
 // ── Blog Categories CRUD ──────────────────────────────────────────
 
-router.post("/admin/blog/categories", requireAuth, async (req, res, next) => {
-  try {
-    const { name, slug } = req.body;
-    if (!name) return fail(res, "Category name is required");
-    const cat = await BlogCategory.create({
-      name: name.trim(),
-      slug: slug?.trim() || name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
-    });
-    return created(res, cat, "Category created");
-  } catch (err) {
-    next(err);
-  }
-});
+router.post(
+  "/admin/blog/categories",
+  requireAuth,
+  validateBody(categoryCreateSchema),
+  async (req, res, next) => {
+    try {
+      const { name, slug } = req.body;
+      if (!name) return fail(res, "Category name is required");
+      const cat = await BlogCategory.create({
+        name: name.trim(),
+        slug: slug?.trim() || name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+      });
+      return created(res, cat, "Category created");
+    } catch (err) {
+      next(err);
+    }
+  },
+);
 
 router.put(
   "/admin/blog/categories/:id",
   requireAuth,
+  validateBody(categoryUpdateSchema),
   async (req, res, next) => {
     try {
       const { name, slug } = req.body;

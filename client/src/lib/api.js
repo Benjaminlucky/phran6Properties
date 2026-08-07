@@ -14,10 +14,9 @@ async function fetcher(endpoint, options = {}) {
   const url = `${API_URL}${endpoint}`;
   const headers = { "Content-Type": "application/json", ...options.headers };
 
-  if (typeof window !== "undefined") {
-    const token = localStorage.getItem("nr_token");
-    if (token) headers["Authorization"] = `Bearer ${token}`;
-  }
+  // Auth travels in the httpOnly `nr_token` cookie set by /auth/login.
+  // It is unreadable from JS by design, so there is no Authorization header
+  // to build — `credentials: "include"` below is what carries it cross-origin.
 
   // Opt plain GET reads into Next.js ISR caching so segment-level
   // `export const revalidate = 300` actually has something to cache.
@@ -33,7 +32,12 @@ async function fetcher(endpoint, options = {}) {
 
   let res;
   try {
-    res = await fetch(url, { ...options, ...cacheOpts, headers });
+    res = await fetch(url, {
+      ...options,
+      ...cacheOpts,
+      headers,
+      credentials: "include",
+    });
   } catch (err) {
     throw new Error(`Cannot reach server at ${API_URL}. Make sure NEXT_PUBLIC_API_URL is set and the backend is running.`);
   }
@@ -189,14 +193,11 @@ export const mediaApi = {
     form.append("file", file);
     form.append("folder", folder);
     form.append("alt_text", altText);
-    const headers = {};
-    if (typeof window !== "undefined") {
-      const t = localStorage.getItem("nr_token");
-      if (t) headers["Authorization"] = `Bearer ${t}`;
-    }
+    // No Content-Type header — the browser sets the multipart boundary.
+    // Auth rides along in the httpOnly cookie via credentials: "include".
     return fetch(`${API_URL}/admin/media`, {
       method: "POST",
-      headers,
+      credentials: "include",
       body: form,
     }).then((r) => r.json());
   },
@@ -258,30 +259,18 @@ export const aboutApi = {
 export const popularAreasApi = {
   getPublic: () => fetcher("/popular-areas"),
   getAll: () => fetcher("/admin/popular-areas"),
-  create: (formData) => {
-    const headers = {};
-    if (typeof window !== "undefined") {
-      const t = localStorage.getItem("nr_token");
-      if (t) headers["Authorization"] = `Bearer ${t}`;
-    }
-    return fetch(`${API_URL}/admin/popular-areas`, {
+  create: (formData) =>
+    fetch(`${API_URL}/admin/popular-areas`, {
       method: "POST",
-      headers,
+      credentials: "include",
       body: formData,
-    }).then((r) => r.json());
-  },
-  update: (id, formData) => {
-    const headers = {};
-    if (typeof window !== "undefined") {
-      const t = localStorage.getItem("nr_token");
-      if (t) headers["Authorization"] = `Bearer ${t}`;
-    }
-    return fetch(`${API_URL}/admin/popular-areas/${id}`, {
+    }).then((r) => r.json()),
+  update: (id, formData) =>
+    fetch(`${API_URL}/admin/popular-areas/${id}`, {
       method: "PUT",
-      headers,
+      credentials: "include",
       body: formData,
-    }).then((r) => r.json());
-  },
+    }).then((r) => r.json()),
   delete: (id) => fetcher(`/admin/popular-areas/${id}`, { method: "DELETE" }),
 };
 
@@ -289,29 +278,17 @@ export const popularAreasApi = {
 export const partnersApi = {
   getPublic: () => fetcher("/partners"),
   getAll: () => fetcher("/admin/partners"),
-  create: (formData) => {
-    const headers = {};
-    if (typeof window !== "undefined") {
-      const t = localStorage.getItem("nr_token");
-      if (t) headers["Authorization"] = `Bearer ${t}`;
-    }
-    return fetch(`${API_URL}/admin/partners`, {
+  create: (formData) =>
+    fetch(`${API_URL}/admin/partners`, {
       method: "POST",
-      headers,
+      credentials: "include",
       body: formData,
-    }).then((r) => r.json());
-  },
-  update: (id, formData) => {
-    const headers = {};
-    if (typeof window !== "undefined") {
-      const t = localStorage.getItem("nr_token");
-      if (t) headers["Authorization"] = `Bearer ${t}`;
-    }
-    return fetch(`${API_URL}/admin/partners/${id}`, {
+    }).then((r) => r.json()),
+  update: (id, formData) =>
+    fetch(`${API_URL}/admin/partners/${id}`, {
       method: "PUT",
-      headers,
+      credentials: "include",
       body: formData,
-    }).then((r) => r.json());
-  },
+    }).then((r) => r.json()),
   delete: (id) => fetcher(`/admin/partners/${id}`, { method: "DELETE" }),
 };

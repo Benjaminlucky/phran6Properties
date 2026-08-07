@@ -5,33 +5,25 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { authApi } from "@/lib/api";
 
-const TOKEN_KEY = "nr_token";
+/**
+ * Session model
+ * ─────────────
+ * The JWT itself lives in an httpOnly `nr_token` cookie set by the API on
+ * /auth/login. It is deliberately unreadable from JavaScript, so nothing here
+ * decodes or even sees it — requests carry it automatically because every call
+ * in lib/api.js uses `credentials: "include"`.
+ *
+ * What we DO keep in localStorage is non-sensitive:
+ *   nr_user       — cached {name, email, role} purely for optimistic first paint
+ *   nr_expires_at — plain epoch-ms number, so we can pre-emptively log out at
+ *                   expiry instead of waiting for the first 401
+ * Neither is a credential; clearing them logs nobody in or out on its own.
+ */
 const USER_KEY = "nr_user";
-const TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const EXP_KEY = "nr_expires_at";
 
-function getTokenExp(token) {
-  try {
-    if (!token || typeof token !== "string") return 0;
-    const parts = token.split(".");
-    if (parts.length !== 3) return 0;
-    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-    const padded = base64.padEnd(
-      base64.length + ((4 - (base64.length % 4)) % 4),
-      "=",
-    );
-    const payload = JSON.parse(atob(padded));
-    if (payload.exp) return payload.exp * 1000;
-    if (payload.iat) return payload.iat * 1000 + TTL_MS;
-    return Date.now() + TTL_MS;
-  } catch {
-    return 0;
-  }
-}
-
-function isValid(token) {
-  const exp = getTokenExp(token);
-  return exp > Date.now() + 60_000;
-}
+// setTimeout silently fires immediately past this, so long waits are chunked.
+const MAX_TIMEOUT = 2_147_483_647;
 
 export const AuthCtx = createContext(null);
 
@@ -51,28 +43,38 @@ export function AuthProvider({ children }) {
     if (timer.current) clearTimeout(timer.current);
   }, []);
 
+  const clearSession = useCallback(() => {
+    try {
+      localStorage.removeItem(USER_KEY);
+      localStorage.removeItem(EXP_KEY);
+    } catch {}
+  }, []);
+
   const doLogout = useCallback(
     (msg) => {
       clearTimer();
-      localStorage.removeItem(TOKEN_KEY);
-      localStorage.removeItem(USER_KEY);
-      document.cookie = `${TOKEN_KEY}=;path=/;max-age=0`;
+
+      // Ask the server to clear the real httpOnly cookie. Fire-and-forget —
+      // navigation must not wait on (or be blocked by) the network.
+      authApi.logout().catch(() => {});
+
+      clearSession();
       setUser(null);
       setLoading(false);
       booted.current = false;
       if (msg) toast.error(msg, { id: "auth-msg" });
       routerRef.current.replace("/admin/login");
     },
-    [clearTimer],
+    [clearTimer, clearSession],
   );
 
-  const MAX_TIMEOUT = 2_147_483_647;
-
+  /** @param {number} expiresAt epoch ms */
   const scheduleExpiry = useCallback(
-    (token) => {
+    (expiresAt) => {
       clearTimer();
-      const exp = getTokenExp(token);
-      const ms = exp - Date.now();
+      if (!expiresAt || !Number.isFinite(expiresAt)) return;
+
+      const ms = expiresAt - Date.now();
 
       if (ms <= 0) {
         doLogout("Session expired. Please log in again.");
@@ -80,9 +82,7 @@ export function AuthProvider({ children }) {
       }
 
       if (ms > MAX_TIMEOUT) {
-        timer.current = setTimeout(() => {
-          scheduleExpiry(token);
-        }, MAX_TIMEOUT);
+        timer.current = setTimeout(() => scheduleExpiry(expiresAt), MAX_TIMEOUT);
         return;
       }
 
@@ -97,66 +97,57 @@ export function AuthProvider({ children }) {
     if (booted.current) return;
     booted.current = true;
 
-    const token = localStorage.getItem(TOKEN_KEY);
-    const userRaw = localStorage.getItem(USER_KEY);
-
-    if (!token) {
-      setLoading(false);
-      return;
-    }
-
-    if (!isValid(token)) {
-      localStorage.removeItem(TOKEN_KEY);
-      localStorage.removeItem(USER_KEY);
-      setLoading(false);
-      return;
-    }
-
+    // There is no client-readable token to gate on any more, so always ask the
+    // server who we are — the cookie (if any) rides along automatically.
     let cached = null;
     try {
-      cached = JSON.parse(userRaw);
+      const raw = localStorage.getItem(USER_KEY);
+      if (raw) cached = JSON.parse(raw);
     } catch {
-      localStorage.removeItem(USER_KEY);
+      try {
+        localStorage.removeItem(USER_KEY);
+      } catch {}
     }
+
+    let cachedExp = 0;
+    try {
+      cachedExp = Number(localStorage.getItem(EXP_KEY)) || 0;
+    } catch {}
 
     if (cached) {
+      // Optimistic paint, then reconcile below.
       setUser(cached);
       setLoading(false);
-      scheduleExpiry(token);
-
-      authApi
-        .me()
-        .then((r) => {
-          if (r?.data) {
-            setUser(r.data);
-            localStorage.setItem(USER_KEY, JSON.stringify(r.data));
-          }
-        })
-        .catch(() => {});
-    } else {
-      authApi
-        .me()
-        .then((r) => {
-          if (r?.data) {
-            localStorage.setItem(USER_KEY, JSON.stringify(r.data));
-            setUser(r.data);
-            scheduleExpiry(token);
-          } else {
-            localStorage.removeItem(TOKEN_KEY);
-            localStorage.removeItem(USER_KEY);
-          }
-        })
-        .catch((err) => {
-          const status = err?.status || err?.response?.status;
-          if (status === 401 || status === 403) {
-            localStorage.removeItem(TOKEN_KEY);
-            localStorage.removeItem(USER_KEY);
-          }
-        })
-        .finally(() => {
-          setLoading(false);
-        });
+      if (cachedExp) scheduleExpiry(cachedExp);
     }
+
+    authApi
+      .me()
+      .then((r) => {
+        if (r?.data) {
+          setUser(r.data);
+          try {
+            localStorage.setItem(USER_KEY, JSON.stringify(r.data));
+          } catch {}
+          if (cachedExp) scheduleExpiry(cachedExp);
+        } else {
+          clearSession();
+          setUser(null);
+        }
+      })
+      .catch((err) => {
+        const status = err?.status || err?.response?.status;
+        if (status === 401 || status === 403) {
+          // Cookie missing/expired/invalid — drop the optimistic user.
+          clearTimer();
+          clearSession();
+          setUser(null);
+        }
+        // Any other error (network/500) leaves the cached user in place.
+      })
+      .finally(() => {
+        setLoading(false);
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -166,29 +157,25 @@ export function AuthProvider({ children }) {
     async (email, password) => {
       const res = await authApi.login({ email, password });
 
-      const token = res?.data?.token;
+      // Response shape is now { user, expiresAt } — no token, by design.
       const u = res?.data?.user;
+      const expiresAt = Number(res?.data?.expiresAt) || 0;
 
-      if (!token || !u) throw new Error("Invalid server response");
-
-      const exp = getTokenExp(token);
-      const ms = exp - Date.now();
-
-      if (exp <= Date.now()) {
-        throw new Error("Received an already-expired token from server");
+      if (!u) throw new Error("Invalid server response");
+      if (expiresAt && expiresAt <= Date.now()) {
+        throw new Error("Received an already-expired session from server");
       }
 
-      localStorage.setItem(TOKEN_KEY, token);
-      localStorage.setItem(USER_KEY, JSON.stringify(u));
-
-      const max = Math.floor(ms / 1000);
-      const sec = location.protocol === "https:" ? ";Secure" : "";
-      document.cookie = `${TOKEN_KEY}=${token};path=/;max-age=${max};SameSite=Lax${sec}`;
+      try {
+        localStorage.setItem(USER_KEY, JSON.stringify(u));
+        if (expiresAt) localStorage.setItem(EXP_KEY, String(expiresAt));
+        else localStorage.removeItem(EXP_KEY);
+      } catch {}
 
       setUser(u);
       setLoading(false);
       booted.current = true;
-      scheduleExpiry(token);
+      if (expiresAt) scheduleExpiry(expiresAt);
       return u;
     },
     [scheduleExpiry],

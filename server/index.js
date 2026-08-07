@@ -5,6 +5,7 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
+const cookieParser = require("cookie-parser");
 const rateLimit = require("express-rate-limit");
 const path = require("path");
 const { connectDB } = require("./config/db");
@@ -58,6 +59,10 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization"],
   }),
 );
+
+// ── Cookies ───────────────────────────────────────────────────────
+// Must run before any route/middleware that reads req.cookies (auth).
+app.use(cookieParser());
 
 // ── Body ──────────────────────────────────────────────────────────
 app.use(express.json({ limit: "10mb" }));

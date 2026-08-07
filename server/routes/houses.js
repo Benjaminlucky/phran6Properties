@@ -14,6 +14,16 @@ const { requireAuth } = require("../middleware/auth");
 const { upload, uploadToCloudinary } = require("../middleware/upload");
 const House = require("../models/House");
 const { revalidate } = require("../lib/revalidate");
+const { z } = require("zod");
+const {
+  formatIssues,
+  optionalString,
+  requiredString,
+  optionalNumber,
+  optionalBoolean,
+  optionalEnum,
+  optionalStringArray,
+} = require("../middleware/validate");
 
 // Escape user input before using in a MongoDB $regex to prevent ReDoS
 const escapeRegex = (s) => s.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
@@ -22,6 +32,61 @@ function housePaths(slug) {
   const base = ["/", "/houses"];
   return slug ? [...base, `/houses/${slug}`] : base;
 }
+
+// ── Write allowlist ───────────────────────────────────────────────
+// Mirrors models/House.js. Server-managed fields (_id, __v, slug,
+// views_count, createdAt, updatedAt) are deliberately absent — zod
+// strips unknown keys, so anything not listed here can never reach
+// House.create() / findByIdAndUpdate() no matter what a client sends.
+const houseBaseSchema = z.object({
+  title: requiredString("Title is required"),
+  description: optionalString,
+  location: optionalString,
+  state: optionalString,
+  lga: optionalString,
+  address: optionalString,
+  price: optionalNumber,
+  price_label: optionalEnum(["outright", "per_annum", "on_request"]),
+  status: optionalEnum([
+    "available",
+    "ready_to_move",
+    "off_plan",
+    "coming_soon",
+    "sold",
+    "reserved",
+    "rented",
+  ]),
+  category: optionalEnum([
+    "apartment",
+    "duplex",
+    "bungalow",
+    "terrace",
+    "penthouse",
+    "semi_detached",
+    "detached",
+    "commercial",
+    "shortlet",
+    "mini_flat",
+  ]),
+  bedrooms: optionalNumber,
+  bathrooms: optionalNumber,
+  garage: optionalNumber,
+  feature_image: optionalString,
+  gallery: optionalStringArray,
+  youtube_url: optionalString,
+  size_sqm: optionalNumber,
+  latitude: optionalNumber,
+  longitude: optionalNumber,
+  features: optionalStringArray,
+  tags: optionalStringArray,
+  meta_title: optionalString,
+  meta_description: optionalString,
+  featured: optionalBoolean,
+});
+
+const houseCreateSchema = houseBaseSchema;
+// Updates are PATCH-style — every field is optional, including title.
+const houseUpdateSchema = houseBaseSchema.partial();
 
 // ══════════════════════════════════════════════════════════════════
 // PUBLIC ROUTES
@@ -192,13 +257,19 @@ router.post(
       }
 
       if (!body.title) return fail(res, "Title is required");
-      if (!body.slug)
-        body.slug = body.title
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, "-")
-          .replace(/^-|-$/g, "");
 
-      const house = await House.create(body);
+      // ── Validate + allowlist the normalized payload ─────────────
+      const parsed = houseCreateSchema.safeParse(body);
+      if (!parsed.success) return fail(res, formatIssues(parsed.error), 400);
+      const data = parsed.data;
+
+      // slug is server-generated — never taken from the request
+      data.slug = data.title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "");
+
+      const house = await House.create(data);
 
       // ── Revalidate public pages ──────────────────────────────────
       revalidate(housePaths(house.slug));
@@ -219,11 +290,6 @@ router.put(
   async (req, res, next) => {
     try {
       const body = { ...req.body };
-
-      // Strip immutable / server-managed fields the client may echo back
-      for (const k of ["_id", "__v", "createdAt", "updatedAt", "views_count", "slug"]) {
-        delete body[k];
-      }
 
       for (const f of ["features", "gallery", "tags"]) {
         if (typeof body[f] === "string") {
@@ -266,7 +332,14 @@ router.put(
         body.feature_image = body.gallery[0];
       }
 
-      const house = await House.findByIdAndUpdate(req.params.id, body, {
+      // ── Validate + allowlist the normalized payload ─────────────
+      // Replaces the old immutable-field denylist: only fields defined
+      // on the schema survive, so _id / __v / slug / views_count /
+      // timestamps (and anything else) are dropped automatically.
+      const parsed = houseUpdateSchema.safeParse(body);
+      if (!parsed.success) return fail(res, formatIssues(parsed.error), 400);
+
+      const house = await House.findByIdAndUpdate(req.params.id, parsed.data, {
         new: true,
         runValidators: true,
       }).lean();

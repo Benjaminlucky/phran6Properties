@@ -4,11 +4,33 @@ const jwt   = require("jsonwebtoken");
 const Admin = require("../models/Admin");
 const { ok, fail } = require("../lib/helpers");
 
+const COOKIE_NAME = "nr_token";
+
+/**
+ * Cookie flags, branched on environment.
+ *
+ * Production: the API (Railway) and the client (Netlify) are on different
+ * registrable domains, so the auth cookie is cross-site and MUST be
+ * SameSite=None. Browsers reject SameSite=None unless Secure is also set.
+ *
+ * Development: plain http://localhost would never send a Secure cookie, so
+ * fall back to lax + insecure. Do not hardcode either mode.
+ */
+function cookieOptions() {
+  const isProd = process.env.NODE_ENV === "production";
+  return {
+    httpOnly: true,
+    secure: isProd,
+    sameSite: isProd ? "none" : "lax",
+    path: "/",
+  };
+}
+
 function signToken(admin) {
   return jwt.sign(
     { id: admin._id, email: admin.email, role: admin.role, name: admin.name },
     process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES_IN || "30d" }
+    { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
   );
 }
 
@@ -18,7 +40,9 @@ exports.login = async (req, res, next) => {
     const { email, password } = req.body;
     if (!email || !password) return fail(res, "Email and password are required");
 
-    const admin = await Admin.findOne({ email: email.toLowerCase().trim() });
+    // `password` is `select: false` on the schema, so it must be explicitly
+    // re-included here or comparePassword() would compare against undefined.
+    const admin = await Admin.findOne({ email: email.toLowerCase().trim() }).select("+password");
     if (!admin || !admin.is_active) return fail(res, "Invalid email or password", 401);
 
     const valid = await admin.comparePassword(password);
@@ -28,9 +52,19 @@ exports.login = async (req, res, next) => {
     await admin.save();
 
     const token = signToken(admin);
+    const { exp } = jwt.decode(token) || {};
+    const expiresAt = exp ? exp * 1000 : Date.now() + 7 * 24 * 60 * 60 * 1000;
+
+    // The raw JWT lives ONLY in this httpOnly cookie — never in the response body.
+    const opts = cookieOptions();
+    res.cookie(COOKIE_NAME, token, {
+      ...opts,
+      maxAge: Math.max(0, expiresAt - Date.now()),
+    });
+
     return ok(res, {
-      token,
       user: { id: admin._id, name: admin.name, email: admin.email, role: admin.role },
+      expiresAt,
     }, "Login successful");
   } catch (err) { next(err); }
 };
@@ -47,7 +81,18 @@ exports.me = async (req, res, next) => {
 exports.verify = (req, res) => ok(res, { valid: true, admin: req.admin });
 
 // POST /auth/logout
-exports.logout = (req, res) => ok(res, null, "Logged out successfully");
+exports.logout = (req, res) => {
+  // clearCookie only matches (and therefore only removes) the cookie when
+  // path/sameSite/secure line up with how it was originally set.
+  const opts = cookieOptions();
+  res.clearCookie(COOKIE_NAME, {
+    path: opts.path,
+    httpOnly: opts.httpOnly,
+    secure: opts.secure,
+    sameSite: opts.sameSite,
+  });
+  return ok(res, null, "Logged out successfully");
+};
 
 // GET /setup
 exports.setupStatus = async (req, res, next) => {

@@ -624,17 +624,20 @@ function EnquiryChart({ data, loading }) {
   );
 }
 
-// ── Main dashboard — receives server-prefetched stats as props ────
-// Props:
-//   initialStats  — data fetched server-side (null if unauthenticated/error)
-//   initialError  — error message string if server fetch failed
+// ── Main dashboard ──────────────────────────────────────────────────
+// Stats are fetched client-side: the auth session lives in an httpOnly
+// cookie scoped to the API's own domain (cross-origin from this app), so
+// the Next.js server can't read it to prefetch this page's data — only
+// the browser can, via credentials: "include" on the request to the API.
+// initialStats/initialError are accepted for backward compatibility but
+// are no longer populated by the server component.
 export default function DashboardClient({
   initialStats = null,
   initialError = null,
 }) {
   const { user } = useAuth();
   const [stats, setStats] = useState(initialStats);
-  const [loading, setLoading] = useState(false); // already loaded server-side
+  const [loading, setLoading] = useState(!initialStats);
   const [error, setError] = useState(initialError);
 
   const fetchStats = async () => {
@@ -650,7 +653,10 @@ export default function DashboardClient({
     }
   };
 
-  // No useEffect needed — data arrives via props from the server component
+  useEffect(() => {
+    if (!initialStats) fetchStats();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const counts = stats?.counts || {};
   const hour = new Date().getHours();

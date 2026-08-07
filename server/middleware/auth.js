@@ -5,11 +5,18 @@ const Admin = require("../models/Admin");
 
 async function requireAuth(req, res, next) {
   try {
-    const header = req.headers.authorization;
-    if (!header?.startsWith("Bearer "))
+    // Primary: httpOnly cookie set by /auth/login.
+    // Fallback: Authorization: Bearer <token> — kept so curl/Postman and any
+    // non-browser client can still authenticate without a cookie jar.
+    let token = req.cookies?.nr_token;
+    if (!token) {
+      const header = req.headers.authorization;
+      if (header?.startsWith("Bearer ")) token = header.slice(7);
+    }
+
+    if (!token)
       return res.status(401).json({ success: false, message: "Authentication required" });
 
-    const token = header.slice(7);
     let payload;
     try {
       payload = jwt.verify(token, process.env.JWT_SECRET);
