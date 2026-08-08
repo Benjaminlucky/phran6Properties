@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Search, X, MapPin, Home, Loader2 } from "lucide-react";
 import { searchApi } from "@/lib/api";
 import { formatPrice } from "@/lib/utils";
@@ -321,7 +322,7 @@ export default function NavSearch() {
                     Land Listings
                   </div>
                   {results.lands.map((land) => (
-                    <a
+                    <Link
                       key={land._id || land.slug}
                       href={`/lands/${land.slug}`}
                       onClick={handleResultClick}
@@ -415,7 +416,7 @@ export default function NavSearch() {
                           {formatPrice(land.price, true)}
                         </span>
                       )}
-                    </a>
+                    </Link>
                   ))}
                 </section>
               )}
@@ -438,7 +439,7 @@ export default function NavSearch() {
                     House Listings
                   </div>
                   {results.houses.map((house) => (
-                    <a
+                    <Link
                       key={house._id || house.slug}
                       href={`/houses/${house.slug}`}
                       onClick={handleResultClick}
@@ -554,7 +555,7 @@ export default function NavSearch() {
                           {formatPrice(house.price, true)}
                         </span>
                       )}
-                    </a>
+                    </Link>
                   ))}
                 </section>
               )}
@@ -591,7 +592,7 @@ export default function NavSearch() {
 
               {/* "View all" footer — only shown when there are results */}
               {totalResults > 0 && (
-                <a
+                <Link
                   href={`/lands?location=${encodeURIComponent(query.trim())}`}
                   onClick={handleResultClick}
                   style={{
@@ -618,7 +619,7 @@ export default function NavSearch() {
                   }
                 >
                   View all results for &ldquo;{query}&rdquo; →
-                </a>
+                </Link>
               )}
             </>
           )}

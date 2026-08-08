@@ -42,7 +42,13 @@ function uploadToCloudinary(req, res, next) {
 
   const uploadParams = {
     folder: `${FOLDER_PREFIX}/${folder}`,
-    transformation: [{ quality: "auto", fetch_format: "auto" }],
+    // "limit" only downscales images that exceed these bounds — it never
+    // upscales a smaller source and preserves aspect ratio. Without this,
+    // a very large source photo (e.g. an 8000px camera original) is stored
+    // and re-transformed at full size on every delivery request.
+    transformation: [
+      { width: 2560, height: 2560, crop: "limit", quality: "auto", fetch_format: "auto" },
+    ],
   };
 
   const uploadOne = (file) =>

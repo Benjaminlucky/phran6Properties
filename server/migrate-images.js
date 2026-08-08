@@ -83,7 +83,9 @@ async function uploadToCloudinary(absPath, folder) {
       use_filename: true,
       unique_filename: true,
       overwrite: false,
-      transformation: [{ quality: "auto", fetch_format: "auto" }],
+      transformation: [
+        { width: 2560, height: 2560, crop: "limit", quality: "auto", fetch_format: "auto" },
+      ],
     });
     return result.secure_url;
   } catch (err) {
@@ -220,7 +222,9 @@ async function migrateMedia() {
         use_filename: true,
         unique_filename: true,
         overwrite: false,
-        transformation: [{ quality: "auto", fetch_format: "auto" }],
+        transformation: [
+          { width: 2560, height: 2560, crop: "limit", quality: "auto", fetch_format: "auto" },
+        ],
       });
       item.file_path = result.secure_url;
       item.public_id = result.public_id;

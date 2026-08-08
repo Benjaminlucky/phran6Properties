@@ -14,7 +14,7 @@ export default function PublicLoading() {
         <div
           style={{
             height: "2rem",
-            background: "linear-gradient(90deg, #f1f5f1 25%, #e4ede4 50%, #f1f5f1 75%)",
+            background: "linear-gradient(90deg, var(--color-surface-2, #f1f5f1) 25%, var(--color-surface-3, #e4ede4) 50%, var(--color-surface-2, #f1f5f1) 75%)",
             backgroundSize: "200% 100%",
             animation: "shimmer 1.4s infinite",
             borderRadius: "0.5rem",
@@ -25,7 +25,7 @@ export default function PublicLoading() {
         <div
           style={{
             height: "1rem",
-            background: "linear-gradient(90deg, #f1f5f1 25%, #e4ede4 50%, #f1f5f1 75%)",
+            background: "linear-gradient(90deg, var(--color-surface-2, #f1f5f1) 25%, var(--color-surface-3, #e4ede4) 50%, var(--color-surface-2, #f1f5f1) 75%)",
             backgroundSize: "200% 100%",
             animation: "shimmer 1.4s infinite",
             borderRadius: "0.5rem",
@@ -48,13 +48,13 @@ export default function PublicLoading() {
               style={{
                 borderRadius: "1rem",
                 overflow: "hidden",
-                border: "1px solid #e8ede8",
+                border: "1px solid var(--color-border, #e8ede8)",
               }}
             >
               <div
                 style={{
                   height: "200px",
-                  background: "linear-gradient(90deg, #f1f5f1 25%, #e4ede4 50%, #f1f5f1 75%)",
+                  background: "linear-gradient(90deg, var(--color-surface-2, #f1f5f1) 25%, var(--color-surface-3, #e4ede4) 50%, var(--color-surface-2, #f1f5f1) 75%)",
                   backgroundSize: "200% 100%",
                   animation: "shimmer 1.4s infinite",
                 }}
@@ -63,7 +63,7 @@ export default function PublicLoading() {
                 <div
                   style={{
                     height: "1rem",
-                    background: "linear-gradient(90deg, #f1f5f1 25%, #e4ede4 50%, #f1f5f1 75%)",
+                    background: "linear-gradient(90deg, var(--color-surface-2, #f1f5f1) 25%, var(--color-surface-3, #e4ede4) 50%, var(--color-surface-2, #f1f5f1) 75%)",
                     backgroundSize: "200% 100%",
                     animation: "shimmer 1.4s infinite",
                     borderRadius: "0.375rem",
@@ -74,7 +74,7 @@ export default function PublicLoading() {
                   style={{
                     height: "0.75rem",
                     width: "60%",
-                    background: "linear-gradient(90deg, #f1f5f1 25%, #e4ede4 50%, #f1f5f1 75%)",
+                    background: "linear-gradient(90deg, var(--color-surface-2, #f1f5f1) 25%, var(--color-surface-3, #e4ede4) 50%, var(--color-surface-2, #f1f5f1) 75%)",
                     backgroundSize: "200% 100%",
                     animation: "shimmer 1.4s infinite",
                     borderRadius: "0.375rem",

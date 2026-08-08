@@ -143,6 +143,18 @@ app.use("/blog", blogRouter);
 app.use("/", miscRouter);
 app.use("/", reviewsRouter);
 
+// ── /v1 alias ─────────────────────────────────────────────────────
+// Every route above is also reachable under /v1/*, so a future breaking
+// change has somewhere to land (/v2) without touching what's already live.
+// This is additive only — the bare paths are not deprecated and the
+// current client keeps using them unchanged.
+app.use("/v1/auth", authLimiter, authRouter);
+app.use("/v1/lands", landsRouter);
+app.use("/v1/houses", housesRouter);
+app.use("/v1/blog", blogRouter);
+app.use("/v1", miscRouter);
+app.use("/v1", reviewsRouter);
+
 // ── 404 ───────────────────────────────────────────────────────────
 app.use((req, res) =>
   res.status(404).json({

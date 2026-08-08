@@ -136,7 +136,7 @@ function Lightbox({ images, startIndex, onClose, title = "Property" }) {
           at its intrinsic size, capped by maxWidth/maxHeight below. */}
       <Image
         src={images[current]}
-        alt={`Photo ${current + 1}`}
+        alt={`${title} — photo ${current + 1} of ${images.length}`}
         width={1600}
         height={1200}
         style={{
