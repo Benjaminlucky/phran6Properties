@@ -96,6 +96,48 @@ describe("POST /auth/login", () => {
   });
 });
 
+describe("per-account login lockout", () => {
+  // A dedicated account, separate from CREDS, so its failed-attempt counter
+  // can't be polluted by (or bleed into) the other tests in this file.
+  const LOCK_CREDS = {
+    name: "Lockout Test Admin",
+    email: "lockout-test@example.com",
+    password: "sup3r-secret-pw",
+  };
+
+  beforeAll(async () => {
+    await Admin.create(LOCK_CREDS);
+  });
+
+  it("locks the account after 5 failed attempts, even with the correct password on the 6th try", async () => {
+    for (let i = 0; i < 5; i++) {
+      const res = await request(app)
+        .post("/auth/login")
+        .send({ email: LOCK_CREDS.email, password: "wrong-password" });
+      expect(res.status).toBe(401);
+    }
+
+    // The 6th attempt uses the CORRECT password — if the lock weren't
+    // enforced, this would succeed with 200.
+    const res = await request(app)
+      .post("/auth/login")
+      .send({ email: LOCK_CREDS.email, password: LOCK_CREDS.password });
+
+    expect(res.status).toBe(423);
+    expect(res.body.success).toBe(false);
+    expect(res.body.message).toMatch(/too many failed attempts/i);
+    expect(getSetCookie(res, "nr_token")).toBeUndefined();
+  });
+
+  it("does not lock out a different account", async () => {
+    // CREDS (the main test admin) had exactly one prior failed attempt from
+    // an earlier test in this file — nowhere near the threshold — so a
+    // correct-password login must still succeed normally.
+    const { res } = await login();
+    expect(res.status).toBe(200);
+  });
+});
+
 describe("GET /auth/me", () => {
   it("returns 401 without a cookie or Authorization header", async () => {
     const res = await request(app).get("/auth/me");

@@ -23,6 +23,7 @@ const SITE_DESC = process.env.NEXT_PUBLIC_SITE_DESC ||
   "Discover premium lands and houses for sale across Nigeria. Browse verified listings, investment properties, and estate developments.";
 
 export const metadata = {
+  metadataBase: new URL(SITE_URL),
   title: `${SITE_NAME} — Premium Properties Across Nigeria`,
   description: SITE_DESC,
   alternates: {

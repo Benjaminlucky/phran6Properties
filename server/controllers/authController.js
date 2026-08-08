@@ -6,6 +6,13 @@ const { ok, fail } = require("../lib/helpers");
 
 const COOKIE_NAME = "nr_token";
 
+// ── Per-account login lockout ──────────────────────────────────────
+// authLimiter in index.js only rate-limits by IP, which a distributed or
+// low-and-slow credential-stuffing run against one known admin email walks
+// straight past. These two constants add a second, per-account brake.
+const MAX_FAILED_ATTEMPTS = 5;
+const LOCKOUT_MINUTES = 15;
+
 /**
  * Cookie flags, branched on environment.
  *
@@ -45,9 +52,35 @@ exports.login = async (req, res, next) => {
     const admin = await Admin.findOne({ email: email.toLowerCase().trim() }).select("+password");
     if (!admin || !admin.is_active) return fail(res, "Invalid email or password", 401);
 
-    const valid = await admin.comparePassword(password);
-    if (!valid) return fail(res, "Invalid email or password", 401);
+    // Locked accounts are rejected before the password is ever checked, so a
+    // guess made during the window costs the attacker a 423 and no signal.
+    if (admin.locked_until && admin.locked_until.getTime() > Date.now()) {
+      const minutesLeft = Math.max(
+        1,
+        Math.ceil((admin.locked_until.getTime() - Date.now()) / 60000),
+      );
+      return fail(
+        res,
+        `Too many failed attempts. Try again in ${minutesLeft} minute${minutesLeft === 1 ? "" : "s"}.`,
+        423,
+      );
+    }
 
+    const valid = await admin.comparePassword(password);
+    if (!valid) {
+      // Count the miss; the Nth one converts the counter into a time lock.
+      admin.failed_login_attempts = (admin.failed_login_attempts || 0) + 1;
+      if (admin.failed_login_attempts >= MAX_FAILED_ATTEMPTS) {
+        admin.locked_until = new Date(Date.now() + LOCKOUT_MINUTES * 60 * 1000);
+        admin.failed_login_attempts = 0;
+      }
+      await admin.save();
+      return fail(res, "Invalid email or password", 401);
+    }
+
+    // Success clears both the counter and any expired lock still on record.
+    admin.failed_login_attempts = 0;
+    admin.locked_until = null;
     admin.last_login = new Date();
     await admin.save();
 

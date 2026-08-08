@@ -39,6 +39,8 @@ export default function Pagination({ currentPage, totalPages, onPageChange }) {
 
   return (
     <div
+      role="navigation"
+      aria-label="Pagination"
       style={{
         display: "flex",
         alignItems: "center",
@@ -51,6 +53,7 @@ export default function Pagination({ currentPage, totalPages, onPageChange }) {
       <button
         onClick={() => onPageChange(currentPage - 1)}
         disabled={currentPage === 1}
+        aria-label="Previous page"
         style={{
           ...btnBase,
           opacity: currentPage === 1 ? 0.4 : 1,
@@ -87,6 +90,7 @@ export default function Pagination({ currentPage, totalPages, onPageChange }) {
           <button
             key={page}
             onClick={() => onPageChange(page)}
+            aria-current={currentPage === page ? "page" : undefined}
             style={{
               ...btnBase,
               background:
@@ -123,6 +127,7 @@ export default function Pagination({ currentPage, totalPages, onPageChange }) {
       <button
         onClick={() => onPageChange(currentPage + 1)}
         disabled={currentPage === totalPages}
+        aria-label="Next page"
         style={{
           ...btnBase,
           opacity: currentPage === totalPages ? 0.4 : 1,

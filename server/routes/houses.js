@@ -29,6 +29,18 @@ const {
 // Escape user input before using in a MongoDB $regex to prevent ReDoS
 const escapeRegex = (s) => s.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
 
+// `state` is an exact-value filter, not free text — both the public filter UI
+// and the admin form pick from the fixed NIGERIAN_STATES list. It used to be
+// matched with an unanchored case-insensitive $regex, which MongoDB can never
+// serve from a B-tree index (it forces a COLLSCAN regardless of `state: 1`).
+// An exact match under a case-insensitive collation stays case-insensitive
+// while remaining index-eligible. The matching collation is declared on the
+// { state, featured, createdAt } index in models/House.js — an index only
+// serves a query whose collation matches its own. Applied only when a state
+// filter is present so unfiltered queries keep using the simple-collation
+// compound indexes.
+const CASE_INSENSITIVE = { locale: "en", strength: 2 };
+
 function housePaths(slug) {
   const base = ["/", "/houses"];
   return slug ? [...base, `/houses/${slug}`] : base;
@@ -111,7 +123,7 @@ router.get("/", publicCache(), async (req, res, next) => {
 
     const filter = {};
     if (location) filter.location = { $regex: escapeRegex(location), $options: "i" };
-    if (state) filter.state = { $regex: escapeRegex(state), $options: "i" };
+    if (state) filter.state = String(state).trim();
     if (status) filter.status = status;
     if (category) filter.category = category;
     if (bedrooms !== undefined) filter.bedrooms = Number(bedrooms);
@@ -130,14 +142,18 @@ router.get("/", publicCache(), async (req, res, next) => {
       ];
     }
 
-    const [data, total] = await Promise.all([
-      House.find(filter)
-        .sort({ featured: -1, createdAt: -1 })
-        .skip(skip)
-        .limit(perPage)
-        .lean(),
-      House.countDocuments(filter),
-    ]);
+    const listQuery = House.find(filter)
+      .sort({ featured: -1, createdAt: -1 })
+      .skip(skip)
+      .limit(perPage)
+      .lean();
+    const countQuery = House.countDocuments(filter);
+    if (state) {
+      listQuery.collation(CASE_INSENSITIVE);
+      countQuery.collation(CASE_INSENSITIVE);
+    }
+
+    const [data, total] = await Promise.all([listQuery, countQuery]);
     return paginated(res, { data: withFeatureImageFallbackList(data), total, page, perPage });
   } catch (err) {
     next(err);

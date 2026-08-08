@@ -387,6 +387,7 @@ export default function ContactClient({ settings }) {
                     <div className="form-grid-2">
                       <div>
                         <label
+                          htmlFor="contact-first-name"
                           style={{
                             display: "block",
                             fontFamily: "var(--font-heading)",
@@ -399,6 +400,7 @@ export default function ContactClient({ settings }) {
                           First Name *
                         </label>
                         <input
+                          id="contact-first-name"
                           name="first_name"
                           value={form.first_name}
                           onChange={handleChange}
@@ -410,6 +412,7 @@ export default function ContactClient({ settings }) {
                       </div>
                       <div>
                         <label
+                          htmlFor="contact-last-name"
                           style={{
                             display: "block",
                             fontFamily: "var(--font-heading)",
@@ -422,6 +425,7 @@ export default function ContactClient({ settings }) {
                           Last Name
                         </label>
                         <input
+                          id="contact-last-name"
                           name="last_name"
                           value={form.last_name}
                           onChange={handleChange}
@@ -436,6 +440,7 @@ export default function ContactClient({ settings }) {
                     <div className="form-grid-2">
                       <div>
                         <label
+                          htmlFor="contact-email"
                           style={{
                             display: "block",
                             fontFamily: "var(--font-heading)",
@@ -448,6 +453,7 @@ export default function ContactClient({ settings }) {
                           Email Address
                         </label>
                         <input
+                          id="contact-email"
                           type="email"
                           name="email"
                           value={form.email}
@@ -460,6 +466,7 @@ export default function ContactClient({ settings }) {
                       </div>
                       <div>
                         <label
+                          htmlFor="contact-phone"
                           style={{
                             display: "block",
                             fontFamily: "var(--font-heading)",
@@ -472,6 +479,7 @@ export default function ContactClient({ settings }) {
                           Phone Number *
                         </label>
                         <input
+                          id="contact-phone"
                           type="tel"
                           name="phone"
                           value={form.phone}
@@ -486,6 +494,7 @@ export default function ContactClient({ settings }) {
 
                     <div>
                       <label
+                        htmlFor="contact-inquiry-type"
                         style={{
                           display: "block",
                           fontFamily: "var(--font-heading)",
@@ -498,6 +507,7 @@ export default function ContactClient({ settings }) {
                         Inquiry Type
                       </label>
                       <select
+                        id="contact-inquiry-type"
                         name="inquiry_type"
                         value={form.inquiry_type}
                         onChange={handleChange}
@@ -516,6 +526,7 @@ export default function ContactClient({ settings }) {
 
                     <div>
                       <label
+                        htmlFor="contact-message"
                         style={{
                           display: "block",
                           fontFamily: "var(--font-heading)",
@@ -528,6 +539,7 @@ export default function ContactClient({ settings }) {
                         Message *
                       </label>
                       <textarea
+                        id="contact-message"
                         name="message"
                         value={form.message}
                         onChange={handleChange}

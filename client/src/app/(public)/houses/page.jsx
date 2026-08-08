@@ -1,8 +1,58 @@
+import { cache } from "react";
 import { housesApi, serverFetch } from "@/lib/api";
 import { SITE_CONFIG, SITE_URL } from "@/config/site";
 import HousesClient from "./HousesClient";
 
 export const revalidate = 300;
+
+// `generateMetadata` and the page component below both need this listing —
+// metadata to decide whether a filtered result set is empty (and therefore
+// noindex), the page to actually render it. They are separate functions, so
+// React's cache() is what makes them share ONE fetch per request-render pass
+// instead of two round-trips to /houses (metadata used to issue its own
+// `perPage: 1` request purely to read `total`).
+//
+// Args are primitives on purpose: cache() keys on shallow-equal arguments, so
+// an object literal built at each call site would miss the memo. Building the
+// identical query here also means the underlying fetch URL is identical, so
+// Next's Data Cache (`next: { revalidate: 300 }`, set in lib/api's fetcher)
+// backs the dedup up as a second layer.
+const getHouseListing = cache(async function getHouseListing(
+  page,
+  state,
+  location,
+  status,
+  category,
+  bedrooms,
+  maxPrice,
+) {
+  try {
+    return await housesApi.getAll({
+      page,
+      state,
+      location,
+      status,
+      category,
+      bedrooms,
+      maxPrice,
+    });
+  } catch {
+    return null; // caller treats null as "API failed", not "no results"
+  }
+});
+
+// Normalizes searchParams into the exact argument tuple both call sites pass.
+function listingArgs(params) {
+  return [
+    Number(params?.page || 1),
+    params?.state || "",
+    params?.location || "",
+    params?.status || "",
+    params?.category || "",
+    params?.bedrooms || "",
+    params?.maxPrice || "",
+  ];
+}
 
 // Filter params that produce a narrowed result set. Any of them (or a
 // page > 1) makes the URL a facet of /houses, not a page of its own.
@@ -25,12 +75,10 @@ export async function generateMetadata({ searchParams }) {
   const hasFilters = Object.values(params || {}).some((v) => v && v !== "1");
   let isEmpty = false;
   if (hasFilters) {
-    try {
-      const res = await housesApi.getAll({ ...params, perPage: 1 });
-      isEmpty = (res?.total || 0) === 0;
-    } catch {
-      /* keep indexable if API fails */
-    }
+    // Shared with the page component below — no extra network round-trip.
+    const res = await getHouseListing(...listingArgs(params));
+    // res === null means the API failed — keep the page indexable.
+    if (res) isEmpty = (res.total || 0) === 0;
   }
 
   // Paginated + filtered result sets must not compete with the canonical
@@ -79,34 +127,15 @@ export async function generateMetadata({ searchParams }) {
 export default async function HousesPage({ searchParams }) {
   const params = await searchParams;
 
-  const page = Number(params?.page || 1);
-  const state = params?.state || "";
-  const location = params?.location || "";
-  const status = params?.status || "";
-  const category = params?.category || "";
-  const bedrooms = params?.bedrooms || "";
-  const maxPrice = params?.maxPrice || "";
+  const args = listingArgs(params);
+  const [page, state, location, status, category, bedrooms, maxPrice] = args;
 
-  let houses = [],
-    totalPages = 1,
-    totalCount = 0;
-
-  try {
-    const res = await housesApi.getAll({
-      page,
-      state,
-      location,
-      status,
-      category,
-      bedrooms,
-      maxPrice,
-    });
-    houses = res?.data || [];
-    totalPages = res?.totalPages || 1;
-    totalCount = res?.total || 0;
-  } catch {
-    houses = [];
-  }
+  // Same memoized call generateMetadata made — served from React's per-request
+  // cache, so this does not hit the network a second time.
+  const res = await getHouseListing(...args);
+  const houses = res?.data || [];
+  const totalPages = res?.totalPages || 1;
+  const totalCount = res?.total || 0;
 
   return (
     <HousesClient

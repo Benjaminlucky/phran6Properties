@@ -10,8 +10,10 @@
  *      whose feature_image / gallery / cover_image points to
  *      the old local path — replacing with the new Cloudinary URL
  *
- * Run once from inside the server/ folder:
- *   node migrate-images.js
+ * Run once from inside the server/ folder — the --confirm flag is
+ * required, since this connects to the MONGODB_URI of the current
+ * environment (usually production) and mutates records:
+ *   node migrate-images.js --confirm
  *
  * Safe to re-run — skips files already starting with "https://"
  */
@@ -256,7 +258,41 @@ async function main() {
   process.exit(0);
 }
 
-main().catch((err) => {
-  console.error("Migration failed:", err);
-  process.exit(1);
-});
+// ── Execution safety gate ─────────────────────────────────────────
+// This script connects to whatever MONGODB_URI the current environment
+// points at (usually production) and rewrites records the instant it runs.
+// It must therefore never run as a side effect of being require()'d, and
+// never on a bare `node migrate-images.js` without an explicit opt-in.
+
+function printUsage() {
+  console.log(`
+migrate-images.js — one-time local uploads → Cloudinary migration
+
+This script will:
+  • connect to MONGODB_URI from the CURRENT environment
+    (db: ${process.env.DB_NAME || "naijarealty"}) — this is usually PRODUCTION
+  • upload every local image under ${UPLOADS_DIR}
+    to Cloudinary account "${process.env.CLOUDINARY_CLOUD_NAME || "<unset>"}"
+    under "${FOLDER_PREFIX}/<folder>"
+  • MUTATE Land, House, BlogPost and Media records, rewriting
+    feature_image / gallery / cover_image / file_path to the new URLs
+
+Nothing has been connected to or changed. To actually run it:
+
+  node migrate-images.js --confirm
+`);
+}
+
+if (require.main === module) {
+  if (!process.argv.includes("--confirm")) {
+    printUsage();
+    process.exit(0);
+  }
+
+  main().catch((err) => {
+    console.error("Migration failed:", err);
+    process.exit(1);
+  });
+}
+
+module.exports = { main };

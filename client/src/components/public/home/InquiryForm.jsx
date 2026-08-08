@@ -191,8 +191,11 @@ export default function InquiryForm({ settings }) {
         {/* Row 1: Inquiry type + Property type */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label style={labelStyle}>I am interested in</label>
+            <label htmlFor="inquiry-inquiry-type" style={labelStyle}>
+              I am interested in
+            </label>
             <select
+              id="inquiry-inquiry-type"
               name="inquiry_type"
               value={form.inquiry_type}
               onChange={handleChange}
@@ -211,8 +214,11 @@ export default function InquiryForm({ settings }) {
             </select>
           </div>
           <div>
-            <label style={labelStyle}>Property Type</label>
+            <label htmlFor="inquiry-property-type" style={labelStyle}>
+              Property Type
+            </label>
             <select
+              id="inquiry-property-type"
               name="property_type"
               value={form.property_type}
               onChange={handleChange}
@@ -235,8 +241,11 @@ export default function InquiryForm({ settings }) {
         {/* Row 2: Budget + Location */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label style={labelStyle}>Max Budget</label>
+            <label htmlFor="inquiry-budget" style={labelStyle}>
+              Max Budget
+            </label>
             <select
+              id="inquiry-budget"
               name="budget"
               value={form.budget}
               onChange={handleChange}
@@ -255,8 +264,11 @@ export default function InquiryForm({ settings }) {
             </select>
           </div>
           <div>
-            <label style={labelStyle}>Preferred Location</label>
+            <label htmlFor="inquiry-preferred-location" style={labelStyle}>
+              Preferred Location
+            </label>
             <select
+              id="inquiry-preferred-location"
               name="preferred_location"
               value={form.preferred_location}
               onChange={handleChange}
@@ -282,8 +294,11 @@ export default function InquiryForm({ settings }) {
 
         {/* Additional info */}
         <div>
-          <label style={labelStyle}>Additional Information</label>
+          <label htmlFor="inquiry-additional-info" style={labelStyle}>
+            Additional Information
+          </label>
           <textarea
+            id="inquiry-additional-info"
             name="additional_info"
             value={form.additional_info}
             onChange={handleChange}
@@ -298,10 +313,11 @@ export default function InquiryForm({ settings }) {
         {/* Row: First + Last name */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label style={labelStyle}>
+            <label htmlFor="inquiry-first-name" style={labelStyle}>
               First Name <span style={{ color: "#ff6b6b" }}>*</span>
             </label>
             <input
+              id="inquiry-first-name"
               type="text"
               name="first_name"
               value={form.first_name}
@@ -314,8 +330,11 @@ export default function InquiryForm({ settings }) {
             />
           </div>
           <div>
-            <label style={labelStyle}>Last Name</label>
+            <label htmlFor="inquiry-last-name" style={labelStyle}>
+              Last Name
+            </label>
             <input
+              id="inquiry-last-name"
               type="text"
               name="last_name"
               value={form.last_name}
@@ -331,8 +350,11 @@ export default function InquiryForm({ settings }) {
         {/* Row: Email + Phone */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label style={labelStyle}>Email Address</label>
+            <label htmlFor="inquiry-email" style={labelStyle}>
+              Email Address
+            </label>
             <input
+              id="inquiry-email"
               type="email"
               name="email"
               value={form.email}
@@ -344,10 +366,11 @@ export default function InquiryForm({ settings }) {
             />
           </div>
           <div>
-            <label style={labelStyle}>
+            <label htmlFor="inquiry-phone" style={labelStyle}>
               Phone Number <span style={{ color: "#ff6b6b" }}>*</span>
             </label>
             <input
+              id="inquiry-phone"
               type="tel"
               name="phone"
               value={form.phone}

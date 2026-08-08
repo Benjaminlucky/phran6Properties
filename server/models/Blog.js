@@ -3,24 +3,24 @@
 const mongoose = require("mongoose");
 
 const categorySchema = new mongoose.Schema({
-  name: { type: String, required: true, unique: true, trim: true },
-  slug: { type: String, required: true, unique: true },
+  name: { type: String, required: true, unique: true, trim: true, maxlength: 120 },
+  slug: { type: String, required: true, unique: true, maxlength: 200 },
 }, { timestamps: true });
 
 const postSchema = new mongoose.Schema({
-  title:           { type: String, required: true, trim: true },
-  slug:            { type: String, required: true, unique: true },
-  content:         { type: String },
-  excerpt:         { type: String },
-  cover_image:     { type: String },
+  title:           { type: String, required: true, trim: true, maxlength: 250 },
+  slug:            { type: String, required: true, unique: true, maxlength: 300 },
+  content:         { type: String, maxlength: 100000 },
+  excerpt:         { type: String, maxlength: 1000 },
+  cover_image:     { type: String, maxlength: 2000 },
   category:        { type: mongoose.Schema.Types.ObjectId, ref: "BlogCategory" },
   author:          { type: mongoose.Schema.Types.ObjectId, ref: "Admin" },
-  author_name:     { type: String },
+  author_name:     { type: String, maxlength: 120 },
   status:          { type: String, enum: ["draft","published"], default: "draft" },
   reading_time:    { type: Number, default: 5 },
   tags:            { type: [String], default: [] },
-  meta_title:      { type: String },
-  meta_description:{ type: String },
+  meta_title:      { type: String, maxlength: 200 },
+  meta_description:{ type: String, maxlength: 300 },
   views_count:     { type: Number, default: 0 },
   published_at:    { type: Date },
 }, { timestamps: true });

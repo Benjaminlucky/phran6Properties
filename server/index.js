@@ -7,9 +7,11 @@ const cors = require("cors");
 const helmet = require("helmet");
 const cookieParser = require("cookie-parser");
 const rateLimit = require("express-rate-limit");
+const pinoHttp = require("pino-http");
 const path = require("path");
 const { connectDB } = require("./config/db");
 const { ok, fail } = require("./lib/helpers");
+const logger = require("./lib/logger");
 
 const authRouter = require("./routes/auth");
 const landsRouter = require("./routes/lands");
@@ -32,6 +34,19 @@ app.set("trust proxy", 1);
 
 // ── Connect DB ────────────────────────────────────────────────────
 connectDB();
+
+// ── Request logging ──────────────────────────────────────────────
+// Redact the auth cookie and bearer header so the JWT never ends up in
+// logs — everything else about the request/response is fine to keep.
+app.use(
+  pinoHttp({
+    logger,
+    redact: {
+      paths: ["req.headers.cookie", "req.headers.authorization", 'res.headers["set-cookie"]'],
+      censor: "[redacted]",
+    },
+  }),
+);
 
 // ── Security ──────────────────────────────────────────────────────
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
@@ -161,7 +176,7 @@ app.use((err, req, res, next) => {
     return res.status(409).json({ success: false, message: `A record with this ${field} already exists` });
   }
 
-  console.error("[ERROR]", err.message);
+  logger.error({ err, path: req.path, method: req.method }, err.message);
   res.status(err.status || 500).json({
     success: false,
     message:

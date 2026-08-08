@@ -12,6 +12,13 @@ const adminSchema = new mongoose.Schema({
   role:      { type: String, enum: ["super_admin", "admin", "editor"], default: "admin" },
   is_active: { type: Boolean, default: true },
   last_login:{ type: Date },
+  // ── Per-account login lockout ──────────────────────────────────
+  // The IP-based authLimiter can't stop a distributed / low-and-slow
+  // credential-stuffing run against one known admin email, so failures
+  // are also counted per account. Not select:false — the login handler
+  // needs both fields on the .select("+password") lookup.
+  failed_login_attempts: { type: Number, default: 0 },
+  locked_until:          { type: Date, default: null },
 }, { timestamps: true });
 
 // Hash password before save

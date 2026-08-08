@@ -178,8 +178,15 @@
   }
 
   /* ── Focus visible ── */
+  /* Global keyboard-focus safety net: applies even before hydration, so
+     elements relying on JS onFocus/onBlur handlers still show an indicator.
+     !important is deliberate here — several form inputs set outline:"none"
+     as an inline style, which otherwise always wins over an external
+     stylesheet rule regardless of specificity or @layer. Accessibility
+     focus indicators are one of the few cases where overriding inline
+     styles this way is the correct call. */
   :focus-visible {
-    outline: 2px solid var(--color-primary);
+    outline: 2px solid var(--color-primary, #b2ff70) !important;
     outline-offset: 2px;
     border-radius: var(--radius-sm);
   }
