@@ -47,18 +47,17 @@ export default function Navbar({ settings }) {
     <header
       className="fixed top-0 left-0 right-0 z-50 transition-all duration-300"
       style={{
-        background: scrolled
-          ? "rgba(28, 28, 46, 0.97)"
-          : "var(--color-secondary)",
-        backdropFilter: scrolled ? "blur(12px)" : "none",
-        boxShadow: scrolled ? "0 2px 20px rgba(0,0,0,0.3)" : "none",
-        borderBottom: scrolled ? "none" : "1px solid rgba(255,255,255,0.06)",
+        background: "var(--color-surface, #ffffff)",
+        boxShadow: scrolled ? "0 2px 20px rgba(15,31,32,0.08)" : "none",
+        borderBottom: scrolled
+          ? "none"
+          : "1px solid var(--color-border, #e2e8e0)",
       }}
     >
       <div className="container-site">
         <nav className="flex items-center justify-between h-16 md:h-18">
           {/* ── Logo ── */}
-          <Logo settings={settings} />
+          <Logo settings={settings} textColor="var(--color-secondary)" />
 
           {/* ── Desktop Nav Links ── */}
           <ul className="hidden md:flex items-center gap-1">
@@ -70,22 +69,24 @@ export default function Navbar({ settings }) {
                   style={{
                     fontFamily: "var(--font-heading)",
                     color: isActive(link.href)
-                      ? "var(--color-primary)"
-                      : "rgba(255,255,255,0.75)",
+                      ? "var(--color-primary-dark, #1b2f31)"
+                      : "var(--color-text-secondary, #3d5a5c)",
                     background: isActive(link.href)
-                      ? "rgba(16,185,129,0.1)"
+                      ? "var(--color-primary-muted, #e8ffd6)"
                       : "transparent",
                   }}
                   onMouseEnter={(e) => {
                     if (!isActive(link.href)) {
-                      e.currentTarget.style.color = "white";
+                      e.currentTarget.style.color =
+                        "var(--color-secondary, #1b2f31)";
                       e.currentTarget.style.background =
-                        "rgba(255,255,255,0.06)";
+                        "var(--color-surface-2, #f4f9f4)";
                     }
                   }}
                   onMouseLeave={(e) => {
                     if (!isActive(link.href)) {
-                      e.currentTarget.style.color = "rgba(255,255,255,0.75)";
+                      e.currentTarget.style.color =
+                        "var(--color-text-secondary, #3d5a5c)";
                       e.currentTarget.style.background = "transparent";
                     }
                   }}
@@ -97,20 +98,22 @@ export default function Navbar({ settings }) {
           </ul>
 
           {/* ── Desktop right-side actions ── */}
-          <div className="hidden md:flex items-center gap-2">
+          <div className="hidden md:flex items-center gap-1 lg:gap-2">
             {/* Search */}
             <NavSearch />
 
-            {/* Phone */}
+            {/* Phone — hidden below lg so the search + nav links + CTA don't
+                crowd each other on tablet-width screens */}
             <a
               href={`tel:${phone}`}
-              className="flex items-center gap-2 text-sm transition-colors duration-200"
-              style={{ color: "rgba(255,255,255,0.65)" }}
+              className="hidden lg:flex items-center gap-2 text-sm transition-colors duration-200"
+              style={{ color: "var(--color-text-secondary, #3d5a5c)" }}
               onMouseEnter={(e) =>
-                (e.currentTarget.style.color = "var(--color-primary)")
+                (e.currentTarget.style.color = "var(--color-secondary, #1b2f31)")
               }
               onMouseLeave={(e) =>
-                (e.currentTarget.style.color = "rgba(255,255,255,0.65)")
+                (e.currentTarget.style.color =
+                  "var(--color-text-secondary, #3d5a5c)")
               }
             >
               <Phone size={14} />
@@ -136,7 +139,7 @@ export default function Navbar({ settings }) {
             <NavSearch />
             <button
               className="p-2 rounded-lg transition-colors"
-              style={{ color: "white" }}
+              style={{ color: "var(--color-secondary, #1b2f31)" }}
               onClick={() => setIsOpen(!isOpen)}
               aria-label={isOpen ? "Close menu" : "Open menu"}
             >
@@ -151,8 +154,8 @@ export default function Navbar({ settings }) {
         <div
           className="md:hidden border-t"
           style={{
-            background: "var(--color-secondary-dark)",
-            borderColor: "rgba(255,255,255,0.08)",
+            background: "var(--color-surface, #ffffff)",
+            borderColor: "var(--color-border, #e2e8e0)",
           }}
         >
           <div className="container-site py-4 flex flex-col gap-1">
@@ -164,10 +167,10 @@ export default function Navbar({ settings }) {
                 style={{
                   fontFamily: "var(--font-heading)",
                   color: isActive(link.href)
-                    ? "var(--color-primary)"
-                    : "rgba(255,255,255,0.75)",
+                    ? "var(--color-primary-dark, #1b2f31)"
+                    : "var(--color-text-secondary, #3d5a5c)",
                   background: isActive(link.href)
-                    ? "rgba(16,185,129,0.1)"
+                    ? "var(--color-primary-muted, #e8ffd6)"
                     : "transparent",
                 }}
               >
@@ -177,12 +180,12 @@ export default function Navbar({ settings }) {
 
             <div
               className="mt-4 pt-4 flex flex-col gap-3"
-              style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}
+              style={{ borderTop: "1px solid var(--color-border, #e2e8e0)" }}
             >
               <a
                 href={`tel:${phone}`}
                 className="flex items-center gap-2 px-4 py-2 text-sm"
-                style={{ color: "rgba(255,255,255,0.65)" }}
+                style={{ color: "var(--color-text-secondary, #3d5a5c)" }}
               >
                 <Phone size={14} />
                 {phone}
