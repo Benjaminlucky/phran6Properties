@@ -19,6 +19,7 @@ import HouseCard from "@/components/public/HouseCard";
 import SectionHeader from "@/components/shared/SectionHeader";
 import { API_URL } from "@/config/site";
 import { formatPrice } from "@/lib/utils";
+import { popularAreasApi, partnersApi } from "@/lib/api";
 
 function getImgUrl(path) {
   if (!path) return null;
@@ -1475,8 +1476,8 @@ export function PopularAreas({ areas = [] }) {
       { name: "GRA", location: "Port Harcourt", count: "19 Properties" },
     ];
 
-    fetch(API_URL + "/popular-areas")
-      .then((r) => r.json())
+    popularAreasApi
+      .getPublic()
       .then((json) => {
         const data = json?.data || [];
         setDisplayAreas(data.length > 0 ? data : FALLBACK);
@@ -1759,8 +1760,8 @@ export function Partners({ partners = [] }) {
     if (partnerFetchedRef.current) return;
     partnerFetchedRef.current = true;
 
-    fetch(API_URL + "/partners")
-      .then((r) => r.json())
+    partnersApi
+      .getPublic()
       .then((json) => {
         const data = json?.data || [];
         setDisplayPartners(data.length > 0 ? data : FALLBACK);

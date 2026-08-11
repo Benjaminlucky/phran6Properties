@@ -362,18 +362,36 @@ export default function LoginForm() {
               />
             </div>
             <div>
-              <label
+              <div
                 style={{
-                  display: "block",
-                  fontFamily: "Plus Jakarta Sans, sans-serif",
-                  fontWeight: 600,
-                  fontSize: "0.8125rem",
-                  color: "rgba(255,255,255,0.6)",
+                  display: "flex",
+                  alignItems: "baseline",
+                  justifyContent: "space-between",
+                  gap: "1rem",
                   marginBottom: "0.5rem",
                 }}
               >
-                Password
-              </label>
+                <label
+                  style={{
+                    fontFamily: "Plus Jakarta Sans, sans-serif",
+                    fontWeight: 600,
+                    fontSize: "0.8125rem",
+                    color: "rgba(255,255,255,0.6)",
+                  }}
+                >
+                  Password
+                </label>
+                <a
+                  href="/admin/forgot-password"
+                  style={{
+                    fontSize: "0.75rem",
+                    color: "rgba(255,255,255,0.35)",
+                    textDecoration: "none",
+                  }}
+                >
+                  Forgot password?
+                </a>
+              </div>
               <div style={{ position: "relative" }}>
                 <input
                   type={showPass ? "text" : "password"}

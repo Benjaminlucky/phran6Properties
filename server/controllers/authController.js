@@ -1,10 +1,35 @@
 "use strict";
 
-const jwt   = require("jsonwebtoken");
-const Admin = require("../models/Admin");
+const jwt    = require("jsonwebtoken");
+const crypto = require("crypto");
+const Admin  = require("../models/Admin");
 const { ok, fail } = require("../lib/helpers");
+const { sendPasswordResetEmail } = require("../services/email");
 
 const COOKIE_NAME = "nr_token";
+
+// ── Password reset ─────────────────────────────────────────────────
+const RESET_TOKEN_BYTES  = 32;            // 256 bits of entropy
+const RESET_TTL_MS       = 60 * 60 * 1000; // 1 hour
+// Deliberately identical for "no such account", "no token issued",
+// "expired", and "wrong token" — same reasoning as login never saying
+// whether the email or the password was the wrong half.
+const RESET_INVALID_MSG =
+  "This reset link is invalid or has expired. Please request a new one.";
+
+const hashResetToken = (raw) =>
+  crypto.createHash("sha256").update(String(raw)).digest("hex");
+
+/** Constant-time compare of two hex digests; false (never a throw) on any mismatch. */
+function tokenMatches(rawToken, storedHash) {
+  if (!storedHash) return false;
+  const a = Buffer.from(hashResetToken(rawToken), "utf8");
+  const b = Buffer.from(String(storedHash), "utf8");
+  // timingSafeEqual throws on unequal lengths; a different length is
+  // itself a non-match, so short-circuit rather than let it throw.
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(a, b);
+}
 
 // ── Per-account login lockout ──────────────────────────────────────
 // authLimiter in index.js only rate-limits by IP, which a distributed or
@@ -125,6 +150,82 @@ exports.logout = (req, res) => {
     sameSite: opts.sameSite,
   });
   return ok(res, null, "Logged out successfully");
+};
+
+// POST /auth/forgot-password
+// Public. Always answers with the same message whether or not the address
+// belongs to an account — otherwise this endpoint becomes a free oracle for
+// enumerating which emails have admin access.
+exports.forgotPassword = async (req, res, next) => {
+  const GENERIC_OK =
+    "If an account exists for that email, a password reset link has been sent.";
+  try {
+    const { email } = req.body;
+    const admin = await Admin.findOne({ email: email.toLowerCase().trim() });
+
+    // Unknown or deactivated account: identical response, no timing tell
+    // worth chasing here since the DB lookup already happened.
+    if (!admin || !admin.is_active) return ok(res, null, GENERIC_OK);
+
+    const rawToken = crypto.randomBytes(RESET_TOKEN_BYTES).toString("hex");
+    admin.password_reset_token   = hashResetToken(rawToken);
+    admin.password_reset_expires = new Date(Date.now() + RESET_TTL_MS);
+    // pre("save") only re-hashes when `password` isModified, so writing
+    // these two fields cannot double-hash the stored credential.
+    await admin.save();
+
+    const base = (process.env.FRONTEND_URL || "").replace(/\/$/, "");
+    const resetUrl =
+      `${base}/admin/reset-password` +
+      `?token=${rawToken}&email=${encodeURIComponent(admin.email)}`;
+
+    try {
+      await sendPasswordResetEmail(admin, resetUrl);
+    } catch (err) {
+      // sendPasswordResetEmail already swallows its own failures; this is
+      // belt-and-braces. A mail outage must never change the response, or
+      // it leaks that the account exists.
+      console.error("[Auth] Password reset email failed:", err.message);
+    }
+
+    return ok(res, null, GENERIC_OK);
+  } catch (err) { next(err); }
+};
+
+// POST /auth/reset-password
+// Public. Consumes a single-use token issued by forgotPassword.
+exports.resetPassword = async (req, res, next) => {
+  try {
+    const { email, token, new_password } = req.body;
+
+    const admin = await Admin.findOne({ email: email.toLowerCase().trim() })
+      .select("+password_reset_token +password_reset_expires");
+
+    if (
+      !admin ||
+      !admin.password_reset_token ||
+      !admin.password_reset_expires ||
+      admin.password_reset_expires.getTime() < Date.now()
+    ) {
+      return fail(res, RESET_INVALID_MSG, 400);
+    }
+
+    if (!tokenMatches(token, admin.password_reset_token)) {
+      return fail(res, RESET_INVALID_MSG, 400);
+    }
+
+    admin.password = new_password;          // pre("save") hashes it
+    admin.password_reset_token   = null;    // single use — burn it
+    admin.password_reset_expires = null;
+    // Proving control of the account's inbox is a stronger signal than the
+    // failed-login counter, and clears the real deadlock of being locked out
+    // *and* having forgotten the password.
+    admin.failed_login_attempts = 0;
+    admin.locked_until = null;
+    await admin.save();
+
+    return ok(res, null, "Password reset successfully. You can now sign in.");
+  } catch (err) { next(err); }
 };
 
 // GET /setup

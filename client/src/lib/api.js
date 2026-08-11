@@ -94,6 +94,13 @@ export const authApi = {
   logout: () => fetcher("/auth/logout", { method: "POST" }),
   me: () => fetcher("/auth/me"),
   verify: () => fetcher("/auth/verify"),
+  // Both public (no session yet, by definition). forgotPassword always
+  // resolves with the same generic message whether or not the account
+  // exists — do not treat its response as an existence check.
+  forgotPassword: (d) =>
+    fetcher("/auth/forgot-password", { method: "POST", body: JSON.stringify(d) }),
+  resetPassword: (d) =>
+    fetcher("/auth/reset-password", { method: "POST", body: JSON.stringify(d) }),
 };
 
 export const landsApi = {

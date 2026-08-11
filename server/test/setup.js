@@ -35,6 +35,13 @@ process.env.JWT_EXPIRES_IN = "1h";
 process.env.REVALIDATE_SECRET = "";
 process.env.FRONTEND_URL = "http://localhost:3000";
 
+// Same idea for outbound mail: an empty key makes services/email.js throw
+// inside its own try/catch, so no HTTP request ever leaves the suite. Without
+// this, the real RESEND_API_KEY from server/.env leaks in and every
+// forgot-password test round-trips to Resend's API. This also exercises the
+// path that matters most — a send failure must NOT change the response.
+process.env.RESEND_API_KEY = "";
+
 // Dummy Cloudinary creds so config/cloudinary.js never picks up real ones.
 // No test uploads a file, so these are never actually exercised.
 process.env.CLOUDINARY_CLOUD_NAME = "test";

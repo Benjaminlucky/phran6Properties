@@ -19,6 +19,15 @@ const adminSchema = new mongoose.Schema({
   // needs both fields on the .select("+password") lookup.
   failed_login_attempts: { type: Number, default: 0 },
   locked_until:          { type: Date, default: null },
+  // ── Password reset ─────────────────────────────────────────────
+  // Only the SHA-256 hash of the emailed token is stored, never the raw
+  // value — a leaked DB dump must not be replayable as a reset link.
+  // (SHA-256 rather than bcrypt: these are 256-bit random single-use
+  // tokens, not low-entropy user-chosen secrets, so there is nothing for
+  // a slow KDF to defend against.) select:false for the same reason
+  // `password` is: they must never ride along on an ordinary find().
+  password_reset_token:   { type: String, select: false, default: null },
+  password_reset_expires: { type: Date,   select: false, default: null },
 }, { timestamps: true });
 
 // Hash password before save

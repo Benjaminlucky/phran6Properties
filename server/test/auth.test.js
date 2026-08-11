@@ -12,6 +12,7 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import request from "supertest";
 import mongoose from "mongoose";
+import crypto from "node:crypto";
 
 import app from "../index.js";
 import Admin from "../models/Admin.js";
@@ -190,5 +191,288 @@ describe("POST /auth/logout", () => {
   it("is itself an authenticated route — 401 without a cookie", async () => {
     const res = await request(app).post("/auth/logout");
     expect(res.status).toBe(401);
+  });
+});
+
+describe("forgot-password / reset-password", () => {
+  // The generic answer the forgot-password endpoint must give for BOTH a real
+  // and a nonexistent address — anything else enumerates admin accounts.
+  const GENERIC_OK =
+    "If an account exists for that email, a password reset link has been sent.";
+  const INVALID_MSG =
+    "This reset link is invalid or has expired. Please request a new one.";
+
+  const sha256 = (v) => crypto.createHash("sha256").update(v).digest("hex");
+
+  /**
+   * Seed a reset token straight onto an admin. The HTTP flow only ever emails
+   * the raw token (and no mail goes out in tests — RESEND_API_KEY is unset),
+   * and the DB stores nothing but its hash, so the raw value can't be
+   * recovered from either. Minting a known raw token here and storing its hash
+   * exercises exactly the same verification path resetPassword runs in prod.
+   */
+  async function seedResetToken(email, { expiresAt = new Date(Date.now() + 3600e3) } = {}) {
+    const rawToken = crypto.randomBytes(32).toString("hex");
+    await Admin.updateOne(
+      { email },
+      { $set: { password_reset_token: sha256(rawToken), password_reset_expires: expiresAt } },
+    );
+    return rawToken;
+  }
+
+  /** Fresh, isolated admin per test so token/lockout state can't bleed. */
+  async function makeAdmin(suffix, extra = {}) {
+    const email = `reset-${suffix}@example.com`;
+    await Admin.deleteOne({ email });
+    const admin = await Admin.create({
+      name: "Reset Test Admin",
+      email,
+      password: "Original-pw1",
+      ...extra,
+    });
+    return admin;
+  }
+
+  describe("POST /auth/forgot-password", () => {
+    it("returns 200 with the generic message for a real account", async () => {
+      await makeAdmin("known");
+
+      const res = await request(app)
+        .post("/auth/forgot-password")
+        .send({ email: "reset-known@example.com" });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.message).toBe(GENERIC_OK);
+    });
+
+    it("stores only a hash of the token, never anything replayable in the response", async () => {
+      await makeAdmin("hashed");
+
+      const res = await request(app)
+        .post("/auth/forgot-password")
+        .send({ email: "reset-hashed@example.com" });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data).toBeNull();
+
+      const stored = await Admin.findOne({ email: "reset-hashed@example.com" })
+        .select("+password_reset_token +password_reset_expires");
+
+      // A sha256 hex digest, and an expiry roughly an hour out.
+      expect(stored.password_reset_token).toMatch(/^[0-9a-f]{64}$/);
+      expect(stored.password_reset_expires.getTime()).toBeGreaterThan(Date.now() + 55 * 60e3);
+      expect(stored.password_reset_expires.getTime()).toBeLessThan(Date.now() + 65 * 60e3);
+      // Whatever the hash is, it must not have travelled back to the client.
+      expect(JSON.stringify(res.body)).not.toContain(stored.password_reset_token);
+    });
+
+    it("does not leak the reset fields on an ordinary query", async () => {
+      await makeAdmin("select-false");
+      await request(app)
+        .post("/auth/forgot-password")
+        .send({ email: "reset-select-false@example.com" });
+
+      const plain = await Admin.findOne({ email: "reset-select-false@example.com" });
+      expect(plain.password_reset_token).toBeUndefined();
+      expect(plain.password_reset_expires).toBeUndefined();
+    });
+
+    it("returns the SAME generic message for an email with no account", async () => {
+      const res = await request(app)
+        .post("/auth/forgot-password")
+        .send({ email: "definitely-nobody@example.com" });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.message).toBe(GENERIC_OK); // byte-identical to the real-account case
+    });
+
+    it("rejects a malformed email with 400", async () => {
+      const res = await request(app)
+        .post("/auth/forgot-password")
+        .send({ email: "not-an-email" });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toMatch(/valid email/i);
+    });
+  });
+
+  describe("POST /auth/reset-password", () => {
+    it("accepts a valid token, sets the new password, and burns the token", async () => {
+      const email = "reset-happy@example.com";
+      await makeAdmin("happy");
+      const rawToken = await seedResetToken(email);
+
+      const res = await request(app)
+        .post("/auth/reset-password")
+        .send({ email, token: rawToken, new_password: "Brand-New-pw1" });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.message).toMatch(/password reset successfully/i);
+
+      // The new password actually works end-to-end.
+      const login = await request(app)
+        .post("/auth/login")
+        .send({ email, password: "Brand-New-pw1" });
+      expect(login.status).toBe(200);
+      expect(getSetCookie(login, "nr_token")).toBeDefined();
+
+      // …and the old one no longer does.
+      const old = await request(app)
+        .post("/auth/login")
+        .send({ email, password: "Original-pw1" });
+      expect(old.status).toBe(401);
+
+      // Single use: the token is cleared, so replaying it fails.
+      const stored = await Admin.findOne({ email })
+        .select("+password_reset_token +password_reset_expires");
+      expect(stored.password_reset_token).toBeNull();
+      expect(stored.password_reset_expires).toBeNull();
+
+      const replay = await request(app)
+        .post("/auth/reset-password")
+        .send({ email, token: rawToken, new_password: "Third-Password1" });
+      expect(replay.status).toBe(400);
+      expect(replay.body.message).toBe(INVALID_MSG);
+    });
+
+    it("rejects a wrong token with 400 and the generic message", async () => {
+      const email = "reset-wrong@example.com";
+      await makeAdmin("wrong");
+      await seedResetToken(email);
+
+      const res = await request(app)
+        .post("/auth/reset-password")
+        .send({
+          email,
+          token: crypto.randomBytes(32).toString("hex"), // right shape, wrong value
+          new_password: "Brand-New-pw1",
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toBe(INVALID_MSG);
+
+      // Password untouched.
+      const login = await request(app).post("/auth/login").send({ email, password: "Original-pw1" });
+      expect(login.status).toBe(200);
+    });
+
+    it("rejects a malformed token of the wrong length without throwing", async () => {
+      const email = "reset-malformed@example.com";
+      await makeAdmin("malformed");
+      await seedResetToken(email);
+
+      const res = await request(app)
+        .post("/auth/reset-password")
+        .send({ email, token: "short", new_password: "Brand-New-pw1" });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toBe(INVALID_MSG);
+    });
+
+    it("rejects an expired token with 400", async () => {
+      const email = "reset-expired@example.com";
+      await makeAdmin("expired");
+      const rawToken = await seedResetToken(email, { expiresAt: new Date(Date.now() - 60e3) });
+
+      const res = await request(app)
+        .post("/auth/reset-password")
+        .send({ email, token: rawToken, new_password: "Brand-New-pw1" });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toBe(INVALID_MSG);
+    });
+
+    it("rejects a reset for an account that never requested one", async () => {
+      const email = "reset-untokened@example.com";
+      await makeAdmin("untokened");
+
+      const res = await request(app)
+        .post("/auth/reset-password")
+        .send({
+          email,
+          token: crypto.randomBytes(32).toString("hex"),
+          new_password: "Brand-New-pw1",
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toBe(INVALID_MSG);
+    });
+
+    it("rejects an unknown email with the same generic 400", async () => {
+      const res = await request(app)
+        .post("/auth/reset-password")
+        .send({
+          email: "definitely-nobody@example.com",
+          token: crypto.randomBytes(32).toString("hex"),
+          new_password: "Brand-New-pw1",
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toBe(INVALID_MSG);
+    });
+
+    it("rejects a weak new password with 400, naming the failed requirement", async () => {
+      const email = "reset-weak@example.com";
+      await makeAdmin("weak");
+      const rawToken = await seedResetToken(email);
+
+      const tooShort = await request(app)
+        .post("/auth/reset-password")
+        .send({ email, token: rawToken, new_password: "Ab1" });
+      expect(tooShort.status).toBe(400);
+      expect(tooShort.body.message).toMatch(/at least 8 characters/i);
+
+      const noUpper = await request(app)
+        .post("/auth/reset-password")
+        .send({ email, token: rawToken, new_password: "all-lower1" });
+      expect(noUpper.status).toBe(400);
+      expect(noUpper.body.message).toMatch(/uppercase/i);
+
+      const noNumber = await request(app)
+        .post("/auth/reset-password")
+        .send({ email, token: rawToken, new_password: "NoDigitsHere" });
+      expect(noNumber.status).toBe(400);
+      expect(noNumber.body.message).toMatch(/number/i);
+
+      // Rejected at the schema, so the token survives for a real attempt.
+      const good = await request(app)
+        .post("/auth/reset-password")
+        .send({ email, token: rawToken, new_password: "Strong-Enough1" });
+      expect(good.status).toBe(200);
+    });
+
+    it("clears an active lockout — a locked-out admin can reset and sign straight in", async () => {
+      const email = "reset-locked@example.com";
+      await makeAdmin("locked", {
+        failed_login_attempts: 5,
+        locked_until: new Date(Date.now() + 15 * 60e3),
+      });
+
+      // Precondition: the account really is locked.
+      const blocked = await request(app)
+        .post("/auth/login")
+        .send({ email, password: "Original-pw1" });
+      expect(blocked.status).toBe(423);
+
+      const rawToken = await seedResetToken(email);
+      const reset = await request(app)
+        .post("/auth/reset-password")
+        .send({ email, token: rawToken, new_password: "Unlocked-Now1" });
+      expect(reset.status).toBe(200);
+
+      // No 423 — the reset lifted the lock as well as changing the password.
+      const login = await request(app)
+        .post("/auth/login")
+        .send({ email, password: "Unlocked-Now1" });
+      expect(login.status).toBe(200);
+      expect(getSetCookie(login, "nr_token")).toBeDefined();
+
+      const stored = await Admin.findOne({ email });
+      expect(stored.locked_until).toBeNull();
+      expect(stored.failed_login_attempts).toBe(0);
+    });
   });
 });

@@ -320,4 +320,170 @@ async function sendEnquiryNotification(enquiry, settings = {}) {
   }
 }
 
-module.exports = { sendEnquiryNotification };
+// ── Password reset ─────────────────────────────────────────────────────────
+
+function buildPasswordResetHtml({ name, resetUrl, siteName }) {
+  const safeName = escapeHtml(name) || "there";
+  const safeUrl = escapeHtml(resetUrl);
+  const safeSite = escapeHtml(siteName);
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reset your password — ${safeSite}</title>
+</head>
+<body style="margin:0;padding:0;background:#f8fafc;font-family:Inter,Arial,sans-serif;">
+
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:32px 16px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+
+          <!-- Header -->
+          <tr>
+            <td style="background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%);padding:28px 32px;">
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td>
+                    <div style="display:inline-block;background:linear-gradient(135deg,#ff6b6b,#e85555);border-radius:8px;width:36px;height:36px;line-height:36px;text-align:center;vertical-align:middle;margin-right:10px;">
+                      <span style="color:white;font-size:18px;">🏠</span>
+                    </div>
+                    <span style="color:white;font-size:20px;font-weight:800;vertical-align:middle;">${safeSite}</span>
+                  </td>
+                  <td align="right">
+                    <span style="background:rgba(255,107,107,0.2);color:#ff6b6b;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;">PASSWORD RESET</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:32px;">
+
+              <h2 style="margin:0 0 4px;font-size:22px;color:#0f172a;">Reset your password</h2>
+              <p style="margin:0 0 24px;color:#94a3b8;font-size:13px;">Requested for your ${safeSite} admin account</p>
+
+              <p style="margin:0 0 16px;color:#334155;font-size:14px;line-height:1.6;">
+                Hi ${safeName},
+              </p>
+              <p style="margin:0 0 24px;color:#334155;font-size:14px;line-height:1.6;">
+                We received a request to reset the password for your admin account.
+                Click the button below to choose a new one.
+              </p>
+
+              <!-- CTA -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+                <tr>
+                  <td>
+                    <a href="${safeUrl}" style="display:inline-block;background:linear-gradient(135deg,#ff6b6b,#e85555);color:white;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">
+                      🔑 Reset Password
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin-bottom:24px;">
+                <p style="margin:0 0 8px;color:#334155;font-size:13px;line-height:1.6;">
+                  <strong>This link expires in 1 hour</strong> and can only be used once.
+                </p>
+                <p style="margin:0;color:#64748b;font-size:13px;line-height:1.6;">
+                  If you didn't request a password reset, you can safely ignore this
+                  email — your password stays unchanged.
+                </p>
+              </div>
+
+              <p style="margin:0;color:#94a3b8;font-size:12px;line-height:1.6;word-break:break-all;">
+                Button not working? Paste this link into your browser:<br/>
+                <a href="${safeUrl}" style="color:#ff6b6b;text-decoration:none;">${safeUrl}</a>
+              </p>
+
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background:#f8fafc;padding:20px 32px;border-top:1px solid #e2e8f0;">
+              <p style="margin:0;font-size:12px;color:#94a3b8;text-align:center;">
+                This email was sent automatically by ${safeSite} CMS.<br/>
+                For your security, never forward this link to anyone.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>`;
+}
+
+function buildPasswordResetText({ name, resetUrl, siteName }) {
+  return [
+    `PASSWORD RESET — ${siteName} CMS`,
+    "================================",
+    "",
+    `Hi ${name || "there"},`,
+    "",
+    "We received a request to reset the password for your admin account.",
+    "Open the link below to choose a new password:",
+    "",
+    resetUrl,
+    "",
+    "This link expires in 1 hour and can only be used once.",
+    "If you didn't request a password reset, you can safely ignore this email —",
+    "your password stays unchanged.",
+  ].join("\n");
+}
+
+/**
+ * Send a password-reset link to an admin.
+ *
+ * Never throws: the caller (authController.forgotPassword) must return the
+ * exact same generic response whether or not delivery succeeded, otherwise a
+ * mail outage turns the endpoint into an account-enumeration oracle.
+ *
+ * @param {object} admin     — the Admin document (needs `email` and `name`)
+ * @param {string} resetUrl  — fully-built frontend link carrying the raw token
+ * @returns {Promise<void>}
+ */
+async function sendPasswordResetEmail(admin, resetUrl) {
+  const to = admin?.email;
+  if (!to) {
+    console.warn("[Email] No recipient on admin — skipping password reset email.");
+    return;
+  }
+
+  const from = resolveFromAddress(null);
+  const siteName = process.env.SITE_NAME || "NaijaRealty";
+  const payload = { name: admin.name, resetUrl, siteName };
+
+  try {
+    const resend = getResend();
+    const result = await resend.emails.send({
+      from,
+      to: [to],
+      subject: `🔑 Reset your ${siteName} admin password`,
+      html: buildPasswordResetHtml(payload),
+      text: buildPasswordResetText(payload),
+      tags: [{ name: "category", value: "password_reset" }],
+    });
+
+    if (result.error) {
+      console.error("[Email] Resend API error:", result.error);
+    } else {
+      console.log(`[Email] Password reset sent → ${to} (id: ${result.data?.id})`);
+    }
+  } catch (err) {
+    // A missing RESEND_API_KEY lands here too (getResend throws). The reset
+    // request must still succeed from the client's point of view.
+    console.error("[Email] Failed to send password reset:", err.message);
+  }
+}
+
+module.exports = { sendEnquiryNotification, sendPasswordResetEmail };
