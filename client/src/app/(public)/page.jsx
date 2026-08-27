@@ -9,23 +9,26 @@ export async function generateMetadata() {
     const res = await serverFetch("/settings", { next: { revalidate: 300 } });
     const s = res?.data?.settings || {};
     const siteName = s.site_name || SITE_CONFIG.name;
+    const defaultTitle = `${siteName} — Lands, Houses & Real Estate Investment`;
+    const title = s.meta_title || defaultTitle;
     const description =
+      s.meta_description ||
       s.hero_subtext ||
       "Find your perfect property across Nigeria. Verified listings, transparent pricing, trusted agents.";
     const ogImage = `${SITE_URL}/api/og?title=${encodeURIComponent(siteName + " — Premium Properties")}&subtitle=Lands+%26+Houses+Across+Nigeria&type=default&site=${encodeURIComponent(siteName)}`;
     return {
-      title: `${siteName} — Lands, Houses & Real Estate Investment`,
+      title,
       description,
       alternates: { canonical: SITE_URL },
       openGraph: {
-        title: `${siteName} — Lands, Houses & Real Estate Investment`,
+        title,
         description,
         url: SITE_URL,
         images: [{ url: ogImage, width: 1200, height: 630 }],
       },
       twitter: {
         card: "summary_large_image",
-        title: `${siteName} — Lands, Houses & Real Estate Investment`,
+        title,
         description,
         images: [ogImage],
       },

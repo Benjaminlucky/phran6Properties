@@ -20,12 +20,14 @@ export default function Footer({ settings }) {
   const address = settings?.address || SITE_CONFIG.address;
   const year = new Date().getFullYear();
 
+  // Admin settings save these unprefixed (facebook/instagram/…); the
+  // social_-prefixed fallback covers any legacy row saved under the old key.
   const socials = [
-    { icon: Facebook, href: settings?.social_facebook, label: "Facebook" },
-    { icon: Instagram, href: settings?.social_instagram, label: "Instagram" },
-    { icon: Twitter, href: settings?.social_twitter, label: "Twitter" },
-    { icon: Youtube, href: settings?.social_youtube, label: "YouTube" },
-    { icon: Linkedin, href: settings?.social_linkedin, label: "LinkedIn" },
+    { icon: Facebook, href: settings?.facebook || settings?.social_facebook, label: "Facebook" },
+    { icon: Instagram, href: settings?.instagram || settings?.social_instagram, label: "Instagram" },
+    { icon: Twitter, href: settings?.twitter || settings?.social_twitter, label: "Twitter" },
+    { icon: Youtube, href: settings?.youtube || settings?.social_youtube, label: "YouTube" },
+    { icon: Linkedin, href: settings?.linkedin || settings?.social_linkedin, label: "LinkedIn" },
   ].filter((s) => s.href);
 
   const discoverLinks = POPULAR_LOCATIONS.slice(0, 6).map((l) => ({

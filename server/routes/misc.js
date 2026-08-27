@@ -94,6 +94,7 @@ const teamUpdateSchema = z.object({
   role: teamRole,
   phone: optionalString,
   bio: optionalString,
+  is_active: optionalBoolean,
 });
 
 const popularAreaCreateSchema = z.object({
@@ -716,9 +717,24 @@ router.post(
 );
 
 // PUT /admin/team/:id
+// Any admin may edit their own profile (name/email/phone/bio). Changing
+// someone else's record, or changing role/is_active at all — even your own —
+// is restricted to super_admin, so a non-super-admin can never grant
+// themselves elevated access or deactivate another account.
 router.put("/admin/team/:id", requireAuth, validateBody(teamUpdateSchema), async (req, res, next) => {
   try {
-    const { first_name, last_name, name, email, role, phone, bio } = req.body;
+    const { first_name, last_name, name, email, role, phone, bio, is_active } = req.body;
+
+    const isSelf = String(req.admin._id) === String(req.params.id);
+    const isSuper = req.admin.role === "super_admin";
+
+    if (!isSelf && !isSuper) return fail(res, "Forbidden", 403);
+    if ((role !== undefined || is_active !== undefined) && !isSuper) {
+      return fail(res, "Only a super admin can change role or active status", 403);
+    }
+    if (isSelf && is_active === false) {
+      return fail(res, "You cannot deactivate your own account");
+    }
 
     const resolvedName =
       name?.trim() ||
@@ -731,6 +747,7 @@ router.put("/admin/team/:id", requireAuth, validateBody(teamUpdateSchema), async
     if (role !== undefined) update.role = role;
     if (phone !== undefined) update.phone = phone;
     if (bio !== undefined) update.bio = bio;
+    if (is_active !== undefined) update.is_active = is_active;
 
     const member = await Admin.findByIdAndUpdate(req.params.id, update, {
       new: true,

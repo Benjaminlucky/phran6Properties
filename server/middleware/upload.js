@@ -4,7 +4,15 @@ const multer = require("multer");
 const { Readable } = require("stream");
 const cloudinary = require("../config/cloudinary");
 
-const ALLOWED = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+const ALLOWED = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "image/svg+xml",
+  "image/x-icon",
+  "image/vnd.microsoft.icon",
+]);
 const MAX = parseInt(process.env.MAX_FILE_SIZE) || 5 * 1024 * 1024;
 const VALID_FOLDERS = ["lands", "houses", "blog", "general", "logos"];
 const FOLDER_PREFIX = process.env.CLOUDINARY_FOLDER_PREFIX || "naijarealty";
@@ -12,7 +20,7 @@ const FOLDER_PREFIX = process.env.CLOUDINARY_FOLDER_PREFIX || "naijarealty";
 function fileFilter(req, file, cb) {
   ALLOWED.has(file.mimetype)
     ? cb(null, true)
-    : cb(new Error("Only JPEG, PNG, WebP, and GIF images are allowed"));
+    : cb(new Error("Only JPEG, PNG, WebP, GIF, SVG, and ICO images are allowed"));
 }
 
 const upload = multer({
@@ -40,19 +48,27 @@ function uploadToCloudinary(req, res, next) {
   const folder = VALID_FOLDERS.includes(raw) ? raw : "general";
   req.uploadFolder = folder;
 
-  const uploadParams = {
-    folder: `${FOLDER_PREFIX}/${folder}`,
-    // "limit" only downscales images that exceed these bounds — it never
-    // upscales a smaller source and preserves aspect ratio. Without this,
-    // a very large source photo (e.g. an 8000px camera original) is stored
-    // and re-transformed at full size on every delivery request.
-    transformation: [
-      { width: 2560, height: 2560, crop: "limit", quality: "auto", fetch_format: "auto" },
-    ],
-  };
-
   const uploadOne = (file) =>
     new Promise((resolve, reject) => {
+      // SVG is a vector format — the raster resize/quality transform below
+      // doesn't apply to it (and Cloudinary requires SVG delivery to stay
+      // untouched), so only attach it for raster uploads.
+      const isSvg = file.mimetype === "image/svg+xml";
+      const uploadParams = {
+        folder: `${FOLDER_PREFIX}/${folder}`,
+        ...(isSvg
+          ? {}
+          : {
+              // "limit" only downscales images that exceed these bounds — it
+              // never upscales a smaller source and preserves aspect ratio.
+              // Without this, a very large source photo (e.g. an 8000px
+              // camera original) is stored and re-transformed at full size
+              // on every delivery request.
+              transformation: [
+                { width: 2560, height: 2560, crop: "limit", quality: "auto", fetch_format: "auto" },
+              ],
+            }),
+      };
       const stream = cloudinary.uploader.upload_stream(
         uploadParams,
         (error, result) => {

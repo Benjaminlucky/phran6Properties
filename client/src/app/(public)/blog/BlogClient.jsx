@@ -30,85 +30,6 @@ const DEFAULT_CATEGORIES = [
   { id: "lifestyle", name: "Lifestyle" },
 ];
 
-// const PLACEHOLDER_POSTS = [
-//   {
-//     id: 1,
-//     slug: "lekki-corridor-2025",
-//     title:
-//       "Why the Lekki Corridor Remains Nigeria's Hottest Real Estate Zone in 2025",
-//     excerpt:
-//       "From Free Trade Zone to Phase 1, we break down why savvy investors keep pouring money into this stretch of Lagos.",
-//     cover_image: null,
-//     category: "Market Updates",
-//     reading_time: 5,
-//     published_at: "2025-01-15",
-//     author_name: "Chukwuemeka Adeyemi",
-//   },
-//   {
-//     id: 2,
-//     slug: "buying-land-guide-nigeria",
-//     title:
-//       "The Complete Guide to Buying Land in Nigeria Without Getting Scammed",
-//     excerpt:
-//       "Land fraud is rampant. Here's how to verify titles, conduct due diligence, and protect your investment.",
-//     cover_image: null,
-//     category: "Property Guides",
-//     reading_time: 8,
-//     published_at: "2025-01-10",
-//     author_name: "Fatima Bello",
-//   },
-//   {
-//     id: 3,
-//     slug: "c-of-o-vs-gazette",
-//     title:
-//       "C of O vs Gazette vs Governor's Consent: Which Title Should You Buy?",
-//     excerpt:
-//       "Not all land titles are equal. We explain the hierarchy of Nigerian land titles and which carries the most legal weight.",
-//     cover_image: null,
-//     category: "Investment Tips",
-//     reading_time: 6,
-//     published_at: "2025-01-05",
-//     author_name: "Tunde Olawale",
-//   },
-//   {
-//     id: 4,
-//     slug: "abuja-vs-lagos-investment",
-//     title: "Abuja vs Lagos: Where Should You Invest in Real Estate in 2025?",
-//     excerpt:
-//       "A data-driven comparison of Nigeria's two biggest property markets — cap rates, growth trajectories, and risk profiles.",
-//     cover_image: null,
-//     category: "Investment Tips",
-//     reading_time: 7,
-//     published_at: "2024-12-28",
-//     author_name: "Adaeze Nwosu",
-//   },
-//   {
-//     id: 5,
-//     slug: "off-plan-investment-risks",
-//     title:
-//       "Off-Plan Property Investment in Nigeria: Rewards, Risks & Red Flags",
-//     excerpt:
-//       "Off-plan can deliver 40%+ returns — but only if you know how to identify credible developers from fraudsters.",
-//     cover_image: null,
-//     category: "Investment Tips",
-//     reading_time: 9,
-//     published_at: "2024-12-20",
-//     author_name: "Babatunde Olawale",
-//   },
-//   {
-//     id: 6,
-//     slug: "smart-homes-nigeria",
-//     title: "Smart Homes Are Coming to Lagos: What Buyers Need to Know",
-//     excerpt:
-//       "From automated lighting to biometric access, we tour 5 of Lagos's most technologically advanced residential developments.",
-//     cover_image: null,
-//     category: "Lifestyle",
-//     reading_time: 4,
-//     published_at: "2024-12-15",
-//     author_name: "Zainab Abubakar",
-//   },
-// ];
-
 const cardBgs = [
   "linear-gradient(135deg, #0F172A 0%, #1a2744 100%)",
   "linear-gradient(135deg, #0d1f2d 0%, #1E293B 100%)",
@@ -353,7 +274,7 @@ export default function BlogClient({
   const [totalCount, setTotalCount] = useState(initCount);
   const [activeCategory, setActiveCategory] = useState(initialCategory);
 
-  const displayPosts = posts.length ? posts : PLACEHOLDER_POSTS;
+  const displayPosts = posts;
   const displayCategories = categories.length
     ? [{ _id: "", slug: "", name: "All Posts" }, ...categories]
     : DEFAULT_CATEGORIES;

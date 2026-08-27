@@ -127,9 +127,9 @@ function ImageUpload({ label, value, onChange, folder = "blog" }) {
     try {
       const res = await mediaApi.upload(file, folder);
       if (res?.data?.file_path) onChange(res.data.file_path);
-      else toast.error("Upload failed");
-    } catch {
-      toast.error("Upload failed");
+      else toast.error("Upload failed — no path returned");
+    } catch (err) {
+      toast.error(err?.message || "Upload failed");
     } finally {
       setUploading(false);
     }
@@ -809,7 +809,7 @@ const EMPTY_POST = {
   excerpt: "",
   content: "",
   cover_image: "",
-  category_id: "",
+  category: "",
   status: "draft",
   reading_time: 5,
   meta_title: "",
@@ -826,7 +826,7 @@ function PostForm({ post, categories, onSave, onCancel }) {
       excerpt: post.excerpt || "",
       content: post.content || "",
       cover_image: post.cover_image || "",
-      category_id: post.category?._id || post.category || "",
+      category: post.category?._id || post.category || "",
       status: post.status || "draft",
       reading_time: post.reading_time || 5,
       meta_title: post.meta_title || "",
@@ -1138,8 +1138,8 @@ function PostForm({ post, categories, onSave, onCancel }) {
                   <div>
                     <label style={labelStyle}>Category</label>
                     <select
-                      value={form.category_id}
-                      onChange={(e) => set("category_id", e.target.value)}
+                      value={form.category}
+                      onChange={(e) => set("category", e.target.value)}
                       style={{ ...inputStyle, cursor: "pointer" }}
                     >
                       <option value="">— No Category —</option>

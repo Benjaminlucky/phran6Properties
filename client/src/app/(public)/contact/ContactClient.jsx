@@ -14,6 +14,7 @@ import {
   Instagram,
   Twitter,
   Youtube,
+  Linkedin,
 } from "lucide-react";
 import { toast } from "sonner";
 import PageHero from "@/components/shared/PageHero";
@@ -134,25 +135,32 @@ export default function ContactClient({ settings }) {
     },
   ];
 
+  // Admin settings save these unprefixed (facebook/instagram/…); the
+  // social_-prefixed fallback covers any legacy row saved under the old key.
   const socials = [
     {
       icon: <Facebook size={16} />,
-      href: settings?.social_facebook,
+      href: settings?.facebook || settings?.social_facebook,
       label: "Facebook",
     },
     {
       icon: <Instagram size={16} />,
-      href: settings?.social_instagram,
+      href: settings?.instagram || settings?.social_instagram,
       label: "Instagram",
     },
     {
       icon: <Twitter size={16} />,
-      href: settings?.social_twitter,
+      href: settings?.twitter || settings?.social_twitter,
       label: "Twitter",
     },
     {
+      icon: <Linkedin size={16} />,
+      href: settings?.linkedin || settings?.social_linkedin,
+      label: "LinkedIn",
+    },
+    {
       icon: <Youtube size={16} />,
-      href: settings?.social_youtube,
+      href: settings?.youtube || settings?.social_youtube,
       label: "YouTube",
     },
   ].filter((s) => s.href);

@@ -799,7 +799,7 @@ export default function TeamPage() {
 
   const handleToggleActive = async (member) => {
     try {
-      await teamApi.update(member._id || member.id, { is_active: member.is_active ? 0 : 1 });
+      await teamApi.update(member._id || member.id, { is_active: !member.is_active });
       toast.success(
         member.is_active
           ? `${member.name} deactivated.`

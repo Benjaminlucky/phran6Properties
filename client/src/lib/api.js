@@ -83,6 +83,26 @@ function clean(p) {
   );
 }
 
+// Shared by every multipart/FormData mutation (media, popular areas,
+// partners). Mirrors `fetcher`'s error handling — checks content-type
+// before parsing JSON and throws on a non-2xx response — so a non-JSON
+// error body (proxy/502 HTML page, etc.) surfaces a clear message instead
+// of a raw "Unexpected token <" SyntaxError.
+async function formFetcher(endpoint, options = {}) {
+  const res = await fetch(`${API_URL}${endpoint}`, {
+    ...options,
+    credentials: "include",
+  });
+  const ct = res.headers.get("content-type") || "";
+  const data = ct.includes("application/json")
+    ? await res.json()
+    : { success: false, message: `Request failed (${res.status})` };
+  if (!res.ok) {
+    throw new Error(data.message || `Request failed: ${res.status}`);
+  }
+  return data;
+}
+
 export const setupApi = {
   getStatus: () => fetcher("/setup"),
   create: (d) => fetcher("/setup", { method: "POST", body: JSON.stringify(d) }),
@@ -202,11 +222,7 @@ export const mediaApi = {
     form.append("alt_text", altText);
     // No Content-Type header — the browser sets the multipart boundary.
     // Auth rides along in the httpOnly cookie via credentials: "include".
-    return fetch(`${API_URL}/admin/media`, {
-      method: "POST",
-      credentials: "include",
-      body: form,
-    }).then((r) => r.json());
+    return formFetcher("/admin/media", { method: "POST", body: form });
   },
   updateAlt: (id, alt) =>
     fetcher(`/admin/media/${id}`, {
@@ -267,17 +283,9 @@ export const popularAreasApi = {
   getPublic: () => fetcher("/popular-areas"),
   getAll: () => fetcher("/admin/popular-areas"),
   create: (formData) =>
-    fetch(`${API_URL}/admin/popular-areas`, {
-      method: "POST",
-      credentials: "include",
-      body: formData,
-    }).then((r) => r.json()),
+    formFetcher("/admin/popular-areas", { method: "POST", body: formData }),
   update: (id, formData) =>
-    fetch(`${API_URL}/admin/popular-areas/${id}`, {
-      method: "PUT",
-      credentials: "include",
-      body: formData,
-    }).then((r) => r.json()),
+    formFetcher(`/admin/popular-areas/${id}`, { method: "PUT", body: formData }),
   delete: (id) => fetcher(`/admin/popular-areas/${id}`, { method: "DELETE" }),
 };
 
@@ -286,16 +294,8 @@ export const partnersApi = {
   getPublic: () => fetcher("/partners"),
   getAll: () => fetcher("/admin/partners"),
   create: (formData) =>
-    fetch(`${API_URL}/admin/partners`, {
-      method: "POST",
-      credentials: "include",
-      body: formData,
-    }).then((r) => r.json()),
+    formFetcher("/admin/partners", { method: "POST", body: formData }),
   update: (id, formData) =>
-    fetch(`${API_URL}/admin/partners/${id}`, {
-      method: "PUT",
-      credentials: "include",
-      body: formData,
-    }).then((r) => r.json()),
+    formFetcher(`/admin/partners/${id}`, { method: "PUT", body: formData }),
   delete: (id) => fetcher(`/admin/partners/${id}`, { method: "DELETE" }),
 };
