@@ -8,7 +8,7 @@ export async function generateMetadata() {
   try {
     const res = await serverFetch("/settings", { next: { revalidate: 300 } });
     const s = res?.data?.settings || {};
-    const siteName = s.site_name || SITE_CONFIG.name;
+    const siteName = (s.site_name || SITE_CONFIG.name).trim();
     const defaultTitle = `${siteName} — Lands, Houses & Real Estate Investment`;
     const title = s.meta_title || defaultTitle;
     const description =

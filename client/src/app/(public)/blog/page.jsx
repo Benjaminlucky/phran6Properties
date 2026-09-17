@@ -21,7 +21,7 @@ export async function generateMetadata({ searchParams }) {
   try {
     const data = await serverFetch("/settings", { next: { revalidate: 300 } });
     const s = data?.data?.settings || {};
-    const siteName = s.site_name || SITE_CONFIG.name;
+    const siteName = (s.site_name || SITE_CONFIG.name).trim();
     const desc = `Real estate insights, property investment tips, and market updates for Nigerian property buyers and investors.`;
     const ogImage = `${SITE_URL}/api/og?title=${encodeURIComponent("Blog & Insights")}&subtitle=Real+Estate+News+%26+Investment+Tips&type=blog&site=${encodeURIComponent(siteName)}`;
     return {

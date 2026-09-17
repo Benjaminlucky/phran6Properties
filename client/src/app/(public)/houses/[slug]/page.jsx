@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { housesApi, serverFetch } from "@/lib/api";
 import { SITE_CONFIG, SITE_URL } from "@/config/site";
+import { truncate } from "@/lib/utils";
 import HouseDetailClient from "./HouseDetailClient";
 
 export const revalidate = 300;
@@ -14,19 +15,28 @@ export async function generateMetadata({ params }) {
     ]);
     const house = res?.data;
     const s = settingsRes?.data?.settings || {};
-    const siteName = s.site_name || SITE_CONFIG.name;
+    const siteName = (s.site_name || SITE_CONFIG.name).trim();
     if (!house) return { title: `Property Not Found — ${siteName}` };
 
-    const title = house.meta_title || `${house.title} — ${siteName}`;
+    // Clamp to SERP/social-safe lengths — protects against overlong or
+    // keyword-stuffed meta_title/meta_description entered in the admin,
+    // which would otherwise render ugly (and untrustworthy) link previews.
+    const title = truncate(
+      house.meta_title || `${house.title} — ${siteName}`,
+      70,
+    );
     const bedsText =
       house.bedrooms != null
         ? house.bedrooms === 0
           ? "Self Contain"
           : `${house.bedrooms}-Bedroom`
         : "";
-    const description =
+    const description = truncate(
       house.meta_description ||
-      `${bedsText} ${house.category || ""} for sale in ${house.location || house.state || "Nigeria"}. ${house.price ? `Price: ₦${Number(house.price).toLocaleString("en-NG")}.` : ""}`.trim();
+        `${bedsText} ${house.category || ""} for sale in ${house.location || house.state || "Nigeria"}. ${house.price ? `Price: ₦${Number(house.price).toLocaleString("en-NG")}.` : ""}`.trim(),
+      160,
+    );
+    const ogImageUrl = `${SITE_URL}/api/og?title=${encodeURIComponent(house.title)}&subtitle=${encodeURIComponent([house.location, house.state].filter(Boolean).join(", "))}&type=house&site=${encodeURIComponent(siteName)}${house.price ? "&price=" + encodeURIComponent("₦" + Number(house.price).toLocaleString("en-NG")) : ""}`;
 
     return {
       title,
@@ -37,13 +47,7 @@ export async function generateMetadata({ params }) {
         description,
         images: house.feature_image
           ? [{ url: house.feature_image, width: 1200, height: 630 }]
-          : [
-              {
-                url: `${SITE_URL}/api/og?title=${encodeURIComponent(house.title)}&subtitle=${encodeURIComponent([house.location, house.state].filter(Boolean).join(", "))}&type=house${house.price ? "&price=" + encodeURIComponent("₦" + Number(house.price).toLocaleString("en-NG")) : ""}`,
-                width: 1200,
-                height: 630,
-              },
-            ],
+          : [{ url: ogImageUrl, width: 1200, height: 630 }],
         url: `${SITE_URL}/houses/${slug}`,
         type: "website",
       },
@@ -51,11 +55,7 @@ export async function generateMetadata({ params }) {
         card: "summary_large_image",
         title,
         description,
-        images: house.feature_image
-          ? [house.feature_image]
-          : [
-              `${SITE_URL}/api/og?title=${encodeURIComponent(house.title)}&type=house`,
-            ],
+        images: [house.feature_image || ogImageUrl],
       },
     };
   } catch {

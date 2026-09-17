@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { landsApi, serverFetch } from "@/lib/api";
 import { SITE_CONFIG, SITE_URL } from "@/config/site";
+import { truncate } from "@/lib/utils";
 import LandDetailClient from "./LandDetailClient";
 
 export const revalidate = 300;
@@ -14,13 +15,22 @@ export async function generateMetadata({ params }) {
     ]);
     const land = res?.data;
     const s = settingsRes?.data?.settings || {};
-    const siteName = s.site_name || SITE_CONFIG.name;
+    const siteName = (s.site_name || SITE_CONFIG.name).trim();
     if (!land) return { title: `Land Not Found — ${siteName}` };
 
-    const title = land.meta_title || `${land.estate_name} — ${siteName}`;
-    const description =
+    // Clamp to SERP/social-safe lengths — protects against overlong or
+    // keyword-stuffed meta_title/meta_description entered in the admin,
+    // which would otherwise render ugly (and untrustworthy) link previews.
+    const title = truncate(
+      land.meta_title || `${land.estate_name} — ${siteName}`,
+      70,
+    );
+    const description = truncate(
       land.meta_description ||
-      `${land.estate_name} — ${land.size || ""} land for sale in ${land.location || land.state || "Nigeria"}. ${land.title_type ? `Title: ${land.title_type}.` : ""} ${land.price ? `Price: ₦${Number(land.price).toLocaleString("en-NG")}.` : ""}`.trim();
+        `${land.estate_name} — ${land.size || ""} land for sale in ${land.location || land.state || "Nigeria"}. ${land.title_type ? `Title: ${land.title_type}.` : ""} ${land.price ? `Price: ₦${Number(land.price).toLocaleString("en-NG")}.` : ""}`.trim(),
+      160,
+    );
+    const ogImageUrl = `${SITE_URL}/api/og?title=${encodeURIComponent(land.estate_name)}&subtitle=${encodeURIComponent([land.location, land.state].filter(Boolean).join(", "))}&type=land&site=${encodeURIComponent(siteName)}${land.price ? "&price=" + encodeURIComponent("₦" + Number(land.price).toLocaleString("en-NG")) : ""}`;
 
     return {
       title,
@@ -31,13 +41,7 @@ export async function generateMetadata({ params }) {
         description,
         images: land.feature_image
           ? [{ url: land.feature_image, width: 1200, height: 630 }]
-          : [
-              {
-                url: `${SITE_URL}/api/og?title=${encodeURIComponent(land.estate_name)}&subtitle=${encodeURIComponent([land.location, land.state].filter(Boolean).join(", "))}&type=land${land.price ? "&price=" + encodeURIComponent("₦" + Number(land.price).toLocaleString("en-NG")) : ""}`,
-                width: 1200,
-                height: 630,
-              },
-            ],
+          : [{ url: ogImageUrl, width: 1200, height: 630 }],
         url: `${SITE_URL}/lands/${slug}`,
         type: "website",
       },
@@ -45,11 +49,7 @@ export async function generateMetadata({ params }) {
         card: "summary_large_image",
         title,
         description,
-        images: land.feature_image
-          ? [land.feature_image]
-          : [
-              `${SITE_URL}/api/og?title=${encodeURIComponent(land.estate_name)}&type=land`,
-            ],
+        images: [land.feature_image || ogImageUrl],
       },
     };
   } catch {

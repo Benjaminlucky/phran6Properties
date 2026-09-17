@@ -759,22 +759,78 @@ function LandForm({ initial, onSave, onClose, saving }) {
         <div
           style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}
         >
+          <div
+            style={{
+              padding: "0.875rem",
+              borderRadius: "0.5rem",
+              background: "#f8fafc",
+              border: "1px solid #e2e8f0",
+            }}
+          >
+            <p
+              style={{
+                fontSize: "0.7rem",
+                fontWeight: 600,
+                color: "#94a3b8",
+                textTransform: "uppercase",
+                letterSpacing: "0.06em",
+                marginBottom: "0.5rem",
+              }}
+            >
+              Google Preview
+            </p>
+            <p
+              style={{
+                fontSize: "0.95rem",
+                color: "#1558d6",
+                fontWeight: 500,
+                marginBottom: "0.2rem",
+                lineHeight: 1.3,
+              }}
+            >
+              {form.meta_title || form.estate_name || "Estate Name"}
+            </p>
+            <p
+              style={{
+                fontSize: "0.78rem",
+                color: "#006621",
+                marginBottom: "0.2rem",
+              }}
+            >
+              yoursite.com/lands/{form.slug || "estate-slug"}
+            </p>
+            <p style={{ fontSize: "0.78rem", color: "#545454", lineHeight: 1.5 }}>
+              {form.meta_description || "Meta description will appear here…"}
+            </p>
+          </div>
           <div>
-            <label style={S.label}>Meta Title</label>
+            <label style={S.label}>
+              Meta Title{" "}
+              <span style={{ color: "#94a3b8", fontWeight: 400 }}>
+                ({(form.meta_title || "").length}/60)
+              </span>
+            </label>
             <input
               style={S.input}
               value={form.meta_title}
               onChange={(e) => set("meta_title", e.target.value)}
-              placeholder="SEO title"
+              maxLength={60}
+              placeholder="SEO title — short and specific, no keyword lists"
             />
           </div>
           <div>
-            <label style={S.label}>Meta Description</label>
+            <label style={S.label}>
+              Meta Description{" "}
+              <span style={{ color: "#94a3b8", fontWeight: 400 }}>
+                ({(form.meta_description || "").length}/160)
+              </span>
+            </label>
             <textarea
               style={{ ...S.input, minHeight: "72px", resize: "vertical" }}
               value={form.meta_description}
               onChange={(e) => set("meta_description", e.target.value)}
-              placeholder="SEO description"
+              maxLength={160}
+              placeholder="One or two natural sentences — not a list of keywords"
             />
           </div>
         </div>

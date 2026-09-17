@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { blogApi, serverFetch } from "@/lib/api";
 import { SITE_CONFIG, SITE_URL } from "@/config/site";
+import { truncate } from "@/lib/utils";
 import BlogPostClient from "./BlogDetailClient";
 
 export const revalidate = 300;
@@ -14,14 +15,23 @@ export async function generateMetadata({ params }) {
     ]);
     const post = res?.data;
     const s = settingsRes?.data?.settings || {};
-    const siteName = s.site_name || SITE_CONFIG.name;
+    const siteName = (s.site_name || SITE_CONFIG.name).trim();
     if (!post) return { title: `Post Not Found — ${siteName}` };
 
-    const title = post.meta_title || `${post.title} — ${siteName}`;
-    const description =
+    // Clamp to SERP/social-safe lengths — protects against overlong or
+    // keyword-stuffed meta_title/meta_description entered in the admin,
+    // which would otherwise render ugly (and untrustworthy) link previews.
+    const title = truncate(
+      post.meta_title || `${post.title} — ${siteName}`,
+      70,
+    );
+    const description = truncate(
       post.meta_description ||
-      post.excerpt ||
-      `${post.title} — Read on ${siteName}`;
+        post.excerpt ||
+        `${post.title} — Read on ${siteName}`,
+      160,
+    );
+    const ogImageUrl = `${SITE_URL}/api/og?title=${encodeURIComponent(post.title)}&type=blog&site=${encodeURIComponent(siteName)}${post.category?.name ? "&subtitle=" + encodeURIComponent(post.category.name) : ""}`;
 
     return {
       title,
@@ -32,13 +42,7 @@ export async function generateMetadata({ params }) {
         description,
         images: post.cover_image
           ? [{ url: post.cover_image, width: 1200, height: 630 }]
-          : [
-              {
-                url: `${SITE_URL}/api/og?title=${encodeURIComponent(post.title)}&type=blog${post.category?.name ? "&subtitle=" + encodeURIComponent(post.category.name) : ""}`,
-                width: 1200,
-                height: 630,
-              },
-            ],
+          : [{ url: ogImageUrl, width: 1200, height: 630 }],
         url: `${SITE_URL}/blog/${slug}`,
         type: "article",
         publishedTime: post.published_at,
@@ -48,11 +52,7 @@ export async function generateMetadata({ params }) {
         card: "summary_large_image",
         title,
         description,
-        images: post.cover_image
-          ? [post.cover_image]
-          : [
-              `${SITE_URL}/api/og?title=${encodeURIComponent(post.title)}&type=blog`,
-            ],
+        images: [post.cover_image || ogImageUrl],
       },
     };
   } catch {

@@ -98,7 +98,7 @@ export async function generateMetadata({ searchParams }) {
   try {
     const data = await serverFetch("/settings", { next: { revalidate: 300 } });
     const s = data?.data?.settings || {};
-    const siteName = s.site_name || SITE_CONFIG.name;
+    const siteName = (s.site_name || SITE_CONFIG.name).trim();
     const desc = `Browse verified land listings across Nigeria. Find titled plots in Lagos, Abuja, Port Harcourt and more.`;
     const ogImage = `${SITE_URL}/api/og?title=${encodeURIComponent("Land Listings")}&subtitle=Verified+Titled+Land+Across+Nigeria&type=land&site=${encodeURIComponent(siteName)}`;
     return {

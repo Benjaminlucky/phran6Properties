@@ -92,7 +92,7 @@ export async function generateMetadata({ searchParams }) {
   try {
     const data = await serverFetch("/settings", { next: { revalidate: 300 } });
     const s = data?.data?.settings || data?.settings || {};
-    const siteName = s.site_name || SITE_CONFIG.name;
+    const siteName = (s.site_name || SITE_CONFIG.name).trim();
     const desc = `Browse verified house listings across Nigeria. Find apartments, duplexes, bungalows and more in Lagos, Abuja, Port Harcourt and beyond.`;
     const ogImage = `${SITE_URL}/api/og?title=${encodeURIComponent("House Listings")}&subtitle=Apartments%2C+Duplexes+%26+Homes+Across+Nigeria&type=house&site=${encodeURIComponent(siteName)}`;
     return {

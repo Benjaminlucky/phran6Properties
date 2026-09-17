@@ -21,19 +21,22 @@ import { ImageResponse } from "next/og";
 export const runtime = "edge";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+const SITE_NAME = process.env.NEXT_PUBLIC_SITE_NAME || "Nigerian Realty";
 
-// Brand colours — match the default theme
-const PRIMARY = "#FF6B6B";
-const SECONDARY = "#0F172A";
+// Brand colours — match the site theme (lime accent / dark teal), same
+// palette as icon.js and opengraph-image.js, so every generated card looks
+// like it comes from the same brand regardless of which route built it.
+const SECONDARY = "#1b2f31";
 const WHITE = "#FFFFFF";
 const MUTED = "rgba(255,255,255,0.55)";
+const ACCENT = "#b2ff70";
 
-// Type labels and accent colours
+// Type labels — all share the one brand accent colour
 const TYPE_CONFIG = {
-  land: { label: "Land Listing", accent: "#FF6B6B" },
-  house: { label: "House Listing", accent: "#38BDF8" },
-  blog: { label: "Blog & Insights", accent: "#F59E0B" },
-  default: { label: "NaijaRealty", accent: "#FF6B6B" },
+  land: { label: "Land Listing", accent: ACCENT },
+  house: { label: "House Listing", accent: ACCENT },
+  blog: { label: "Blog & Insights", accent: ACCENT },
+  default: { label: "Real Estate", accent: ACCENT },
 };
 
 export async function GET(request) {
@@ -42,12 +45,15 @@ export async function GET(request) {
   const title =
     searchParams.get("title") || "Premium Properties Across Nigeria";
   const subtitle = searchParams.get("subtitle") || "";
-  const price = searchParams.get("price") || "";
+  // Satori (the renderer behind ImageResponse) has no glyph for "₦" in its
+  // default font, so it draws a tofu box — swap in the ISO code instead.
+  const price = (searchParams.get("price") || "").replace(/₦\s*/g, "NGN ").trim();
   const type = searchParams.get("type") || "default";
   const imageUrl = searchParams.get("image") || "";
-  const siteName = searchParams.get("site") || "NaijaRealty";
+  const siteName = (searchParams.get("site") || SITE_NAME).trim();
 
   const config = TYPE_CONFIG[type] || TYPE_CONFIG.default;
+  const logoLetter = (siteName[0] || "P").toUpperCase();
 
   // Truncate title if too long for the card
   const displayTitle = title.length > 72 ? title.slice(0, 70) + "…" : title;
@@ -152,10 +158,10 @@ export async function GET(request) {
                 justifyContent: "center",
                 fontSize: "20px",
                 fontWeight: "bold",
-                color: WHITE,
+                color: SECONDARY,
               }}
             >
-              N
+              {logoLetter}
             </div>
             <span
               style={{

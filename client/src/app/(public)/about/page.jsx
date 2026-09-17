@@ -12,7 +12,7 @@ export async function generateMetadata() {
     ]);
     const s = settingsRes?.data?.settings || {};
     const a = aboutRes?.data || {};
-    const name = s.site_name || SITE_CONFIG.name;
+    const name = (s.site_name || SITE_CONFIG.name).trim();
     const desc =
       a.tagline ||
       `Learn more about ${name} — Nigeria\'s trusted real estate platform.`;

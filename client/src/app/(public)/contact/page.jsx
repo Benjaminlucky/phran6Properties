@@ -8,7 +8,7 @@ export async function generateMetadata() {
   try {
     const data = await serverFetch("/settings", { next: { revalidate: 300 } });
     const s = data?.data?.settings || {};
-    const siteName = s.site_name || SITE_CONFIG.name;
+    const siteName = (s.site_name || SITE_CONFIG.name).trim();
     const desc = `Get in touch with our team. We help you find the perfect land or home across Nigeria.`;
     const ogImage = `${SITE_URL}/api/og?title=${encodeURIComponent("Contact " + siteName)}&subtitle=Get+in+Touch+With+Our+Team&type=default&site=${encodeURIComponent(siteName)}`;
     return {

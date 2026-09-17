@@ -33,6 +33,12 @@ export const metadata = {
       "x-default": SITE_URL,
     },
   },
+  // Set GOOGLE_SITE_VERIFICATION (the content value from Search Console's
+  // "HTML tag" ownership-verification option) as an env var to activate —
+  // no code change needed once you have the code.
+  ...(process.env.GOOGLE_SITE_VERIFICATION
+    ? { verification: { google: process.env.GOOGLE_SITE_VERIFICATION } }
+    : {}),
   openGraph: {
     title: `${SITE_NAME} — Premium Properties Across Nigeria`,
     description: SITE_DESC,
